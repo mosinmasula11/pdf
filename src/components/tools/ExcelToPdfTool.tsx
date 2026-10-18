@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
+import { tableToPdf } from "@/lib/table-pdf";
+import { parseDelimitedText, spreadsheetColumn } from "@/lib/tabular-text";
 import JSZip from "jszip";
 import { FileSpreadsheet, Download, LoaderCircle, CheckCircle2 } from "lucide-react";
 import { downloadBlob, formatBytes } from "@/lib/browser-utils";
@@ -19,6 +20,7 @@ export function ExcelToPdfTool() {
     setResultBlob(null);
     setTablePreview([]);
     const selected = incoming[0];
+    if (!/\.(xlsx|csv|tsv)$/i.test(selected.name)) { setError("Choose a XLSX, CSV or TSV file. Legacy binary formats are not supported."); setFile(null); return; }
     const name = selected.name.toLowerCase();
     if (
       !name.endsWith(".xlsx") &&
@@ -94,7 +96,10 @@ export function ExcelToPdfTool() {
               const ssIndex = parseInt(val, 10);
               val = sharedStrings[ssIndex] || val;
             }
-            rowVals.push(val.trim());
+            if (type === "inlineStr") val = Array.from(cell.getElementsByTagName("t")).map((node) => node.textContent || "").join("");
+            const column = cell.hasAttribute("r") ? spreadsheetColumn(cell.getAttribute("r")!) : c;
+            while (rowVals.length <= column) rowVals.push("");
+            rowVals[column] = val;
           }
 
           if (rowVals.some(Boolean)) {
@@ -105,10 +110,7 @@ export function ExcelToPdfTool() {
         // CSV or TSV
         const text = await file.text();
         const sep = file.name.toLowerCase().endsWith(".tsv") ? "\t" : ",";
-        rows = text
-          .split(/\r?\n/)
-          .map((line) => line.split(sep).map((c) => c.replace(/^["']|["']$/g, "").trim()))
-          .filter((r) => r.some(Boolean));
+        rows = parseDelimitedText(text.replace(/^\uFEFF/, ""), sep);
       }
 
       if (rows.length === 0) {
@@ -117,94 +119,7 @@ export function ExcelToPdfTool() {
 
       setTablePreview(rows.slice(0, 6));
 
-      // Generate Landscape PDF Report
-      const pdfDoc = await PDFDocument.create();
-      const helvetica = await pdfDoc.embedFont(StandardFonts.Helvetica);
-      const helveticaBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-
-      const pageWidth = 841.89; // Landscape A4
-      const pageHeight = 595.28;
-      const margin = 40;
-
-      // Determine max columns (limit up to 10 columns per table for visual fit)
-      const maxCols = Math.min(10, Math.max(...rows.map((r) => r.length)));
-      const colWidth = (pageWidth - margin * 2) / maxCols;
-      const rowHeight = 22;
-
-      let currentPage = pdfDoc.addPage([pageWidth, pageHeight]);
-      let currentY = pageHeight - margin;
-
-      // Title
-      currentPage.drawText(file.name.replace(/\.[^/.]+$/, ""), {
-        x: margin,
-        y: currentY,
-        size: 15,
-        font: helveticaBold,
-        color: rgb(0.1, 0.15, 0.25),
-      });
-      currentY -= 28;
-
-      const headerRow = rows[0] || [];
-
-      const drawHeader = (page: any, y: number) => {
-        page.drawRectangle({
-          x: margin,
-          y: y - 5,
-          width: pageWidth - margin * 2,
-          height: rowHeight,
-          color: rgb(0.13, 0.55, 0.32), // Excel green
-        });
-
-        for (let c = 0; c < maxCols; c++) {
-          const val = (headerRow[c] || `Col ${c + 1}`).slice(0, 18);
-          page.drawText(val, {
-            x: margin + c * colWidth + 6,
-            y: y,
-            size: 9.5,
-            font: helveticaBold,
-            color: rgb(1, 1, 1),
-          });
-        }
-      };
-
-      drawHeader(currentPage, currentY);
-      currentY -= rowHeight + 2;
-
-      for (let r = 1; r < rows.length; r++) {
-        if (currentY < margin + 25) {
-          currentPage = pdfDoc.addPage([pageWidth, pageHeight]);
-          currentY = pageHeight - margin - 20;
-          drawHeader(currentPage, currentY);
-          currentY -= rowHeight + 2;
-        }
-
-        const isEven = r % 2 === 0;
-        currentPage.drawRectangle({
-          x: margin,
-          y: currentY - 5,
-          width: pageWidth - margin * 2,
-          height: rowHeight,
-          color: isEven ? rgb(0.97, 0.98, 0.99) : rgb(1, 1, 1),
-          borderColor: rgb(0.9, 0.92, 0.95),
-          borderWidth: 0.5,
-        });
-
-        const row = rows[r];
-        for (let c = 0; c < maxCols; c++) {
-          const val = (row[c] || "").slice(0, 20);
-          currentPage.drawText(val, {
-            x: margin + c * colWidth + 6,
-            y: currentY,
-            size: 8.5,
-            font: helvetica,
-            color: rgb(0.2, 0.25, 0.3),
-          });
-        }
-
-        currentY -= rowHeight;
-      }
-
-      const pdfBytes = await pdfDoc.save();
+      const pdfBytes = await tableToPdf(rows, file.name.replace(/\.[^/.]+$/, ""));
       const buffer = pdfBytes.buffer.slice(
         pdfBytes.byteOffset,
         pdfBytes.byteOffset + pdfBytes.byteLength
@@ -229,14 +144,14 @@ export function ExcelToPdfTool() {
         <div>
           <h2 className="text-xl font-semibold text-slate-900">EXCEL to PDF</h2>
           <p className="text-sm text-slate-500">
-            Convert XLSX, CSV and TSV spreadsheets into structured printable PDF reports.
+            Export first-worksheet values from XLSX, CSV or TSV. Wide tables continue across pages; formatting and charts are not preserved.
           </p>
         </div>
       </div>
 
       <input
         type="file"
-        accept=".xlsx,.xls,.csv,.tsv"
+        accept=".xlsx,.csv,.tsv"
         onChange={(e) => handleFile(e.target.files)}
         className="block w-full rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-700"
       />

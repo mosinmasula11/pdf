@@ -2,11 +2,13 @@
 
 import { useState } from "react";
 import { PDFDocument } from "pdf-lib";
+import { writePdfProperties } from "@/lib/pdf-metadata";
 import { Download, FileText, LoaderCircle, ShieldAlert, Sparkles, Trash2 } from "lucide-react";
 import { downloadBlob, formatBytes } from "@/lib/browser-utils";
 
 export function PdfMetadataTool() {
   const [file, setFile] = useState<File | null>(null);
+  const [wipe, setWipe] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [resultBlob, setResultBlob] = useState<Blob | null>(null);
@@ -30,10 +32,11 @@ export function PdfMetadataTool() {
     }
 
     setFile(selected);
+    setWipe(false);
 
     try {
       const buffer = await selected.arrayBuffer();
-      const pdfDoc = await PDFDocument.load(buffer, { ignoreEncryption: true });
+      const pdfDoc = await PDFDocument.load(buffer, { updateMetadata: false });
 
       setTitle(pdfDoc.getTitle() || "");
       setAuthor(pdfDoc.getAuthor() || "");
@@ -47,6 +50,8 @@ export function PdfMetadataTool() {
   };
 
   const handleWipeAll = () => {
+    setWipe(true);
+    setResultBlob(null);
     setTitle("");
     setAuthor("");
     setSubject("");
@@ -66,17 +71,7 @@ export function PdfMetadataTool() {
 
     try {
       const buffer = await file.arrayBuffer();
-      const pdfDoc = await PDFDocument.load(buffer, { ignoreEncryption: true });
-
-      pdfDoc.setTitle(title.trim());
-      pdfDoc.setAuthor(author.trim());
-      pdfDoc.setSubject(subject.trim());
-      pdfDoc.setKeywords(keywords.split(",").map((k) => k.trim()).filter(Boolean));
-      pdfDoc.setCreator(creator.trim());
-      pdfDoc.setProducer(producer.trim());
-      pdfDoc.setModificationDate(new Date());
-
-      const bytes = await pdfDoc.save();
+      const bytes = await writePdfProperties(buffer, { title, author, subject, keywords, creator, producer }, wipe);
       const outBuffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
 
       const blob = new Blob([outBuffer], { type: "application/pdf" });
@@ -99,7 +94,7 @@ export function PdfMetadataTool() {
         <div>
           <h2 className="text-xl font-semibold text-slate-900">PDF Metadata Editor & Stripper</h2>
           <p className="text-sm text-slate-500">
-            View, edit or completely remove hidden author, title, and software tags for privacy.
+            Edit or remove document properties and XMP metadata. Comments, attachments, and document content are unchanged.
           </p>
         </div>
       </div>
@@ -158,7 +153,7 @@ export function PdfMetadataTool() {
               <input
                 type="text"
                 value={title}
-                onChange={(e) => setTitle(e.target.value)}
+                onChange={(e) => { setTitle(e.target.value); setWipe(false); setResultBlob(null); }}
                 placeholder="e.g. Annual Financial Report"
                 className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:border-violet-500"
               />
@@ -169,7 +164,7 @@ export function PdfMetadataTool() {
               <input
                 type="text"
                 value={author}
-                onChange={(e) => setAuthor(e.target.value)}
+                onChange={(e) => { setAuthor(e.target.value); setWipe(false); setResultBlob(null); }}
                 placeholder="e.g. John Doe / Company Name"
                 className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:border-violet-500"
               />
@@ -180,7 +175,7 @@ export function PdfMetadataTool() {
               <input
                 type="text"
                 value={subject}
-                onChange={(e) => setSubject(e.target.value)}
+                onChange={(e) => { setSubject(e.target.value); setWipe(false); setResultBlob(null); }}
                 placeholder="e.g. Q4 Performance & Audits"
                 className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:border-violet-500"
               />
@@ -191,7 +186,7 @@ export function PdfMetadataTool() {
               <input
                 type="text"
                 value={keywords}
-                onChange={(e) => setKeywords(e.target.value)}
+                onChange={(e) => { setKeywords(e.target.value); setWipe(false); setResultBlob(null); }}
                 placeholder="e.g. finance, audit, 2026, report"
                 className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:border-violet-500"
               />
@@ -202,7 +197,7 @@ export function PdfMetadataTool() {
               <input
                 type="text"
                 value={creator}
-                onChange={(e) => setCreator(e.target.value)}
+                onChange={(e) => { setCreator(e.target.value); setWipe(false); setResultBlob(null); }}
                 placeholder="e.g. MSYN Tools / Word"
                 className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:border-violet-500"
               />
@@ -213,7 +208,7 @@ export function PdfMetadataTool() {
               <input
                 type="text"
                 value={producer}
-                onChange={(e) => setProducer(e.target.value)}
+                onChange={(e) => { setProducer(e.target.value); setWipe(false); setResultBlob(null); }}
                 placeholder="e.g. PDF Engine"
                 className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:border-violet-500"
               />

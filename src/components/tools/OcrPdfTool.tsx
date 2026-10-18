@@ -1,10 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { ScanText, Download, LoaderCircle, Copy, Check, Search, FileText } from "lucide-react";
 import { downloadBlob, formatBytes } from "@/lib/browser-utils";
-import { extractTextFromPdf } from "@/lib/pdfjs-helper";
+import { recognizePdf } from "@/lib/pdf-ocr";
 
 export function OcrPdfTool() {
   const [file, setFile] = useState<File | null>(null);
@@ -14,6 +13,8 @@ export function OcrPdfTool() {
     pagesText: string[];
     pageCount: number;
   } | null>(null);
+  const [progress, setProgress] = useState("");
+  const [searchableBytes, setSearchableBytes] = useState<Uint8Array | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -21,6 +22,7 @@ export function OcrPdfTool() {
   const handleFile = (incoming: FileList | null) => {
     if (!incoming || !incoming[0]) return;
     setExtractedData(null);
+    setSearchableBytes(null);
     const selected = incoming[0];
     if (selected.type !== "application/pdf" && !selected.name.toLowerCase().endsWith(".pdf")) {
       setError("Please choose a valid PDF file.");
@@ -42,10 +44,11 @@ export function OcrPdfTool() {
 
     try {
       const arrayBuffer = await file.arrayBuffer();
-      const result = await extractTextFromPdf(arrayBuffer);
+      const result = await recognizePdf(arrayBuffer, setProgress);
+      setSearchableBytes(result.bytes);
       if (!result.fullText.trim()) {
         setError(
-          "No selectable text could be extracted. The PDF may consist solely of raster scans without OCR text layers."
+          "No English text was recognized. Try a clearer, higher-resolution scan."
         );
       }
       setExtractedData(result);
@@ -53,6 +56,7 @@ export function OcrPdfTool() {
       setError(err instanceof Error ? err.message : "OCR text extraction failed.");
     } finally {
       setProcessing(false);
+      setProgress("");
     }
   };
 
@@ -72,32 +76,8 @@ export function OcrPdfTool() {
   const downloadSearchablePdf = async () => {
     if (!file || !extractedData) return;
     try {
-      const pdfDoc = await PDFDocument.create();
-      const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-
-      for (let i = 0; i < extractedData.pagesText.length; i++) {
-        const text = extractedData.pagesText[i];
-        const page = pdfDoc.addPage([595.28, 841.89]);
-        const { height } = page.getSize();
-
-        // Simple text layout with word wrapping
-        const lines = text.match(/.{1,75}(\s|$)/g) || [text];
-        let currentY = height - 50;
-
-        for (const line of lines) {
-          if (currentY < 40) break;
-          page.drawText(line.trim(), {
-            x: 50,
-            y: currentY,
-            size: 10,
-            font,
-            color: rgb(0.1, 0.1, 0.1),
-          });
-          currentY -= 14;
-        }
-      }
-
-      const bytes = await pdfDoc.save();
+      if (!searchableBytes) return;
+      const bytes = searchableBytes;
       const buffer = bytes.buffer.slice(
         bytes.byteOffset,
         bytes.byteOffset + bytes.byteLength
@@ -123,12 +103,13 @@ export function OcrPdfTool() {
         <div>
           <h2 className="text-xl font-semibold text-slate-900">OCR PDF</h2>
           <p className="text-sm text-slate-500">
-            Extract text from your PDF document and make it fully searchable and copyable.
+            Recognize English text in scanned pages locally. Searchable PDF keeps the page images and adds selectable text.
           </p>
         </div>
       </div>
 
       <input
+        disabled={processing}
         type="file"
         accept="application/pdf"
         onChange={(e) => handleFile(e.target.files)}
@@ -149,12 +130,13 @@ export function OcrPdfTool() {
           className="inline-flex items-center gap-2 rounded-xl bg-cyan-600 px-5 py-2.5 font-medium text-white shadow-sm hover:bg-cyan-700 disabled:cursor-not-allowed disabled:bg-cyan-300"
         >
           {processing ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <ScanText className="h-4 w-4" />}
-          {processing ? "Recognizing Text..." : "Recognize & Extract Text"}
+          {processing ? progress || "Recognizing Text..." : "Recognize & Extract Text"}
         </button>
 
         {file && (
           <button
             type="button"
+            disabled={processing}
             onClick={() => {
               setFile(null);
               setExtractedData(null);

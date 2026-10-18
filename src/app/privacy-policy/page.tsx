@@ -4,7 +4,7 @@ import { ShieldCheck, Lock, FileText, CheckCircle2, AlertCircle, HelpCircle } fr
 import { siteConfig } from "@/lib/site-config";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy | 100% Client-Side File Security",
+  title: "Privacy Policy | Local File Processing & Optional Translation",
   description:
     "Learn how MSYN Tools protects your files and privacy. Full GDPR and CCPA compliant privacy policy with local in-browser file security.",
   alternates: {
@@ -52,7 +52,7 @@ export default function PrivacyPage() {
           </div>
           <h3 className="font-bold text-slate-900">Local Browser Processing</h3>
           <p className="mt-1 text-xs leading-5 text-slate-600">
-            Our tools execute directly in your web browser. Files stay safely on your local device memory.
+            Most tools execute in your browser. Translation sends extracted text to MyMemory only after you explicitly opt in.
           </p>
         </div>
 
@@ -67,6 +67,11 @@ export default function PrivacyPage() {
         </div>
       </div>
 
+      <section className="my-8 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-950">
+        <h2 className="text-xl font-bold">Optional external translation</h2>
+        <p className="mt-2">Translate PDF is an exception to local-only text processing. After you opt in on that tool, extracted document text is sent to MyMemory for translation. The PDF file itself is not uploaded. This service has its own privacy and retention practices; do not translate confidential material without reviewing them.</p>
+        <a href="https://mymemory.translated.net/doc/usagelimits.php" className="mt-2 inline-block underline">MyMemory usage information</a>
+      </section>
       {/* Main Content Sections */}
       <div className="prose prose-slate max-w-none space-y-10 text-slate-700">
         <section>

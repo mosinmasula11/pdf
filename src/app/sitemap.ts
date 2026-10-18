@@ -21,6 +21,8 @@ const highPriorityToolPaths = new Set([
   "/webp-to-jpg",
   "/qr-code-generator",
   "/password-generator",
+  "/api-client",
+  "/api-key-generator",
 ]);
 
 const categoryPaths = new Set([

@@ -97,8 +97,9 @@ export function CompressPdfTool() {
       ) as ArrayBuffer;
 
       const blob = new Blob([buffer], { type: "application/pdf" });
-      setResultBlob(blob);
-      setCompressedSize(blob.size);
+      const smaller = blob.size < file.size ? blob : file;
+      setResultBlob(smaller);
+      setCompressedSize(smaller.size);
       setDownloadName(`${file.name.replace(/\.pdf$/i, "")}-compressed.pdf`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "PDF compression failed.");
@@ -177,7 +178,7 @@ export function CompressPdfTool() {
                       name="compressionLevel"
                       value={opt.id}
                       checked={compressionLevel === opt.id}
-                      onChange={() => setCompressionLevel(opt.id as any)}
+                      onChange={() => setCompressionLevel(opt.id as typeof compressionLevel)}
                       className="text-amber-600"
                     />
                   </div>
@@ -219,7 +220,7 @@ export function CompressPdfTool() {
         <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
           <div className="flex items-center gap-2 text-emerald-800 font-semibold">
             <CheckCircle2 className="h-5 w-5" />
-            PDF compressed successfully!
+            {compressedSize < file.size ? "PDF compressed successfully!" : "This PDF is already smaller. Your original file has been kept without quality loss."}
           </div>
 
           <div className="mt-3 flex flex-wrap items-center gap-4 text-sm text-emerald-900">

@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { PDFDocument, PDFName, PDFString } from "pdf-lib";
+import { PDFDocument } from "@cantoo/pdf-lib";
+import { rasterizePdf } from "@/lib/pdf-raster";
 import { Archive, Download, LoaderCircle, CheckCircle2, ShieldCheck } from "lucide-react";
 import { downloadBlob, formatBytes } from "@/lib/browser-utils";
 
@@ -43,47 +44,19 @@ export function PdfToPdfaTool() {
     setError(null);
 
     try {
-      const arrayBuffer = await file.arrayBuffer();
-      const pdfDoc = await PDFDocument.load(arrayBuffer, { ignoreEncryption: true });
-
+      const raster = await rasterizePdf(await file.arrayBuffer());
+      const pdfDoc = await PDFDocument.load(raster);
       const pageCount = pdfDoc.getPageCount();
-
-      // Set standard PDF/A metadata
       pdfDoc.setTitle(file.name.replace(/\.pdf$/i, ""));
-      pdfDoc.setProducer("MSYN PDF/A Archival Engine");
-      pdfDoc.setCreator("MSYN Tools");
-      pdfDoc.setCreationDate(new Date());
-      pdfDoc.setModificationDate(new Date());
-
-      // Embed XMP metadata with PDF/A ID schema
-      const xmp = `<?xpacket begin="" id="W5M0MpCehiHzreSzNTczkc9d"?>
-<x:xmpmeta xmlns:x="adobe:ns:meta/">
-  <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
-    <rdf:Description rdf:about="" xmlns:pdfaExtension="http://www.aiim.org/pdfa/ns/extension/" xmlns:pdfaProperty="http://www.aiim.org/pdfa/ns/property#" xmlns:pdfaid="http://www.aiim.org/pdfa/ns/id/">
-      <pdfaid:part>1</pdfaid:part>
-      <pdfaid:conformance>B</pdfaid:conformance>
-    </rdf:Description>
-  </rdf:RDF>
-</x:xmpmeta>
-<?xpacket end="w"?>`;
-
-      // Embed metadata into catalog dictionary
-      const metadataStream = pdfDoc.context.stream(xmp, {
-        Type: PDFName.of("Metadata"),
-        Subtype: PDFName.of("XML"),
-      });
-      const metadataRef = pdfDoc.context.register(metadataStream);
-      pdfDoc.catalog.set(PDFName.of("Metadata"), metadataRef);
-
+      pdfDoc.convertToPDFA({ conformance: conformance === "PDF/A-1b" ? "1B" : "2B" });
       const standardsApplied = [
-        "ISO 19005-1 compliant PDF/A-1b schema embedded",
-        "Standardized sRGB color output intent",
-        "Cleaned document information dictionaries",
-        "Disabled non-standard dynamic stream actions",
-        "Verified font embedding and glyph encoding",
+        "Rebuilt pages as opaque images; removed forms, scripts, attachments and unembedded fonts",
+        "Embedded sRGB color profile and output intent",
+        "Added document identifiers and synchronized PDF/A metadata",
+        "Independent conformance validation has not been performed. Validate with veraPDF before regulated archiving.",
       ];
 
-      const pdfBytes = await pdfDoc.save();
+      const pdfBytes = await pdfDoc.save({ useObjectStreams: conformance !== "PDF/A-1b" });
       const buffer = pdfBytes.buffer.slice(
         pdfBytes.byteOffset,
         pdfBytes.byteOffset + pdfBytes.byteLength
@@ -113,7 +86,7 @@ export function PdfToPdfaTool() {
         <div>
           <h2 className="text-xl font-semibold text-slate-900">PDF to PDF/A</h2>
           <p className="text-sm text-slate-500">
-            Convert standard PDF documents into ISO-standardized PDF/A format for long-term archiving.
+            Prepare a PDF/A image archive. Pages are rasterized; selectable text, links, and forms are removed. Validate the result with veraPDF before archival use.
           </p>
         </div>
       </div>
@@ -190,11 +163,11 @@ export function PdfToPdfaTool() {
         <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
           <div className="flex items-center gap-2 text-emerald-800 font-semibold">
             <CheckCircle2 className="h-5 w-5" />
-            Document converted to {report.conformance} ISO Archival Standard!
+            {report.conformance} image archive created — validation required
           </div>
 
           <div className="mt-3 space-y-1.5 text-xs text-emerald-900">
-            <div className="font-semibold text-emerald-950">Applied compliance:</div>
+            <div className="font-semibold text-emerald-950">Archive preparation:</div>
             {report.standards.map((s, idx) => (
               <div key={idx} className="flex items-center gap-2">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-600" />

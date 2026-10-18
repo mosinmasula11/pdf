@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { PDFDocument, rgb } from "pdf-lib";
-import { EyeOff, Download, LoaderCircle, CheckCircle2, Trash2, Undo } from "lucide-react";
-import { downloadBlob, formatBytes } from "@/lib/browser-utils";
+import { rasterizePdf } from "@/lib/pdf-raster";
+import { EyeOff, Download, LoaderCircle, CheckCircle2, Trash2 } from "lucide-react";
+import { downloadBlob } from "@/lib/browser-utils";
 import { getPdfJs } from "@/lib/pdfjs-helper";
 
 interface RedactionBox {
@@ -27,6 +27,7 @@ export function RedactPdfTool() {
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const isDragging = useRef(false);
+  const previewVersion = useRef(0);
   const startPos = useRef<{ x: number; y: number } | null>(null);
   const currentDrag = useRef<{ x: number; y: number } | null>(null);
   const pageScaleRef = useRef<number>(1.2);
@@ -50,7 +51,7 @@ export function RedactPdfTool() {
       setRedactions([]);
       setResultBlob(null);
       setError(null);
-      renderPage(selected, 1, []);
+
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load PDF.");
     }
@@ -65,8 +66,10 @@ export function RedactPdfTool() {
       const scale = pageScaleRef.current;
       const viewport = page.getViewport({ scale });
 
-      const canvas = canvasRef.current;
-      if (!canvas) return;
+      const visibleCanvas = canvasRef.current;
+      if (!visibleCanvas) return;
+      const version = ++previewVersion.current;
+      const canvas = document.createElement("canvas");
 
       canvas.width = viewport.width;
       canvas.height = viewport.height;
@@ -81,25 +84,31 @@ export function RedactPdfTool() {
       for (const b of pageBoxes) {
         ctx.fillRect(b.x * scale, b.y * scale, b.width * scale, b.height * scale);
       }
-    } catch {
-      // ignore
+      if (version !== previewVersion.current) return;
+      visibleCanvas.width = canvas.width;
+      visibleCanvas.height = canvas.height;
+      visibleCanvas.getContext("2d")?.drawImage(canvas, 0, 0);
+
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Could not render PDF preview.");
     }
   };
 
   useEffect(() => {
-    if (file) {
-      renderPage(file, currentPage, redactions);
-    }
-  }, [currentPage, redactions]);
+    if (!file) return;
+    const frame = requestAnimationFrame(() => { void renderPage(file, currentPage, redactions); });
+    return () => cancelAnimationFrame(frame);
+  }, [file, currentPage, redactions]);
 
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
+    setResultBlob(null);
     isDragging.current = true;
     startPos.current = {
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top,
+      x: (e.clientX - rect.left) * canvas.width / rect.width,
+      y: (e.clientY - rect.top) * canvas.height / rect.height,
     };
     currentDrag.current = null;
   };
@@ -109,8 +118,8 @@ export function RedactPdfTool() {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
-    const curX = e.clientX - rect.left;
-    const curY = e.clientY - rect.top;
+    const curX = (e.clientX - rect.left) * canvas.width / rect.width;
+    const curY = (e.clientY - rect.top) * canvas.height / rect.height;
 
     currentDrag.current = { x: curX, y: curY };
 
@@ -135,8 +144,8 @@ export function RedactPdfTool() {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
-    const curX = e.clientX - rect.left;
-    const curY = e.clientY - rect.top;
+    const curX = (e.clientX - rect.left) * canvas.width / rect.width;
+    const curY = (e.clientY - rect.top) * canvas.height / rect.height;
 
     const scale = pageScaleRef.current;
     const rawX = Math.min(startPos.current.x, curX) / scale;
@@ -163,10 +172,6 @@ export function RedactPdfTool() {
     }
   };
 
-  const removeRedaction = (id: string) => {
-    setRedactions((prev) => prev.filter((b) => b.id !== id));
-  };
-
   const applyRedactions = async () => {
     if (!file || redactions.length === 0) {
       setError("Please draw at least one blackout redaction box on the document.");
@@ -177,26 +182,7 @@ export function RedactPdfTool() {
     setError(null);
 
     try {
-      const arrayBuffer = await file.arrayBuffer();
-      const pdfDoc = await PDFDocument.load(arrayBuffer);
-
-      for (const box of redactions) {
-        const page = pdfDoc.getPage(box.page - 1);
-        const { height } = page.getSize();
-
-        // Convert canvas top-left coordinates to PDF bottom-left coordinates
-        const pdfY = height - box.y - box.height;
-
-        page.drawRectangle({
-          x: box.x,
-          y: pdfY,
-          width: box.width,
-          height: box.height,
-          color: rgb(0, 0, 0),
-        });
-      }
-
-      const pdfBytes = await pdfDoc.save();
+      const pdfBytes = await rasterizePdf(await file.arrayBuffer(), redactions);
       const buffer = pdfBytes.buffer.slice(
         pdfBytes.byteOffset,
         pdfBytes.byteOffset + pdfBytes.byteLength
@@ -221,7 +207,7 @@ export function RedactPdfTool() {
         <div>
           <h2 className="text-xl font-semibold text-slate-900">Redact PDF</h2>
           <p className="text-sm text-slate-500">
-            Permanently blackout sensitive text, personal data, and confidential information.
+            Permanently remove covered content by rebuilding every page as an image. Text selection, links, forms, and attachments are removed from the exported copy.
           </p>
         </div>
       </div>

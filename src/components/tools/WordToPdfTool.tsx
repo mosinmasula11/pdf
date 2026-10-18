@@ -19,6 +19,7 @@ export function WordToPdfTool() {
     setResultBlob(null);
     setExtractedPreview([]);
     const selected = incoming[0];
+    if (!/\.(docx|txt)$/i.test(selected.name)) { setError("Choose a DOCX or TXT file. Legacy binary formats are not supported."); setFile(null); return; }
     const name = selected.name.toLowerCase();
     if (
       !name.endsWith(".docx") &&
@@ -186,7 +187,7 @@ export function WordToPdfTool() {
         <div>
           <h2 className="text-xl font-semibold text-slate-900">Word to PDF</h2>
           <p className="text-sm text-slate-500">
-            Convert DOCX and Word documents into formatted PDF files instantly.
+            Export DOCX or TXT text to a simple PDF. Images, tables and the original page layout are not preserved.
           </p>
         </div>
       </div>

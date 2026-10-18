@@ -161,9 +161,9 @@ ${summaryData.topKeywords.map((k) => `\`${k}\``).join(" • ")}
           <Sparkles className="h-5 w-5" />
         </div>
         <div>
-          <h2 className="text-xl font-semibold text-slate-900">AI PDF Summarizer</h2>
+          <h2 className="text-xl font-semibold text-slate-900">PDF Summarizer</h2>
           <p className="text-sm text-slate-500">
-            Summarize long PDF documents into key takeaways, themes, and executive insights.
+            Extract key sentences and recurring terms locally. This is a sentence-based summary, not a generative AI model.
           </p>
         </div>
       </div>

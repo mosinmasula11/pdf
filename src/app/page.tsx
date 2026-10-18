@@ -7,7 +7,7 @@ import { availableTools, featuredTools } from "@/lib/tool-registry";
 import { siteConfig } from "@/lib/site-config";
 
 export const metadata: Metadata = {
-  title: "Free Online PDF, Image & Utility Tools (100% Private, No Uploads)",
+  title: "Free Online PDF, Image & Utility Tools",
   description:
     "Compress, convert, merge, split, edit and sign PDF files and resize images in your browser with 100% privacy. Zero server uploads, no limits, and completely free.",
   alternates: {
@@ -161,7 +161,7 @@ export default function HomePage() {
           {[
             {
               title: "Local processing",
-              description: "Files are processed directly in your browser and never uploaded to a remote server.",
+              description: "PDF and image tools process files in your browser. Translation sends extracted text to MyMemory only with your permission.",
               icon: Shield,
             },
             {
@@ -241,7 +241,7 @@ export default function HomePage() {
           <div className="rounded-[2rem] border border-white/10 bg-white/5 p-5">
             <h3 className="text-lg font-semibold">Trust and privacy</h3>
             <ul className="mt-4 space-y-3 text-sm text-slate-200">
-              <li>• Files stay on your device.</li>
+              <li>• Files stay on your device. Translation shares extracted text only with your permission.</li>
               <li>• No registration or login required.</li>
               <li>• No backend file uploads.</li>
               <li>• Free access with no hidden fees.</li>

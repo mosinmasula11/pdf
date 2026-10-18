@@ -1,14 +1,17 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { Copy, Download, Globe, Mail, Phone, QrCode, Wifi } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Copy, Download, Globe, Mail, MessageCircle, Phone, QrCode, Wifi } from "lucide-react";
+import { downloadBlob } from "@/lib/browser-utils";
 import { generateQrMatrix } from "@/lib/qr-generator";
 
-type QrType = "url" | "text" | "wifi" | "email" | "phone";
+type QrType = "url" | "whatsapp" | "wifi" | "text" | "email" | "phone";
 
 export function QrCodeTool() {
   const [qrType, setQrType] = useState<QrType>("url");
   const [url, setUrl] = useState("https://pdf.msyn.in");
+  const [whatsappPhone, setWhatsappPhone] = useState("");
+  const [whatsappMessage, setWhatsappMessage] = useState("");
   const [text, setText] = useState("");
   const [wifiSsid, setWifiSsid] = useState("");
   const [wifiPass, setWifiPass] = useState("");
@@ -20,6 +23,7 @@ export function QrCodeTool() {
   const [fgColor, setFgColor] = useState("#000000");
   const [bgColor, setBgColor] = useState("#ffffff");
   const [size, setSize] = useState(300);
+  const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -29,10 +33,22 @@ export function QrCodeTool() {
     switch (qrType) {
       case "url":
         return url.trim() || "https://pdf.msyn.in";
+      case "whatsapp": {
+        const cleanPhone = whatsappPhone.replace(/[^\d]/g, "");
+        if (!cleanPhone) {
+          return "https://wa.me/";
+        }
+        const textQuery = whatsappMessage.trim()
+          ? `?text=${encodeURIComponent(whatsappMessage.trim())}`
+          : "";
+        return `https://wa.me/${cleanPhone}${textQuery}`;
+      }
       case "text":
         return text.trim() || "Hello from MSYN Tools";
-      case "wifi":
-        return `WIFI:S:${wifiSsid};T:${wifiType};P:${wifiPass};;`;
+      case "wifi": {
+        const escapeWifi = (str: string) => str.replace(/([\\;,:"])/g, "\\$1");
+        return `WIFI:S:${escapeWifi(wifiSsid)};T:${wifiType};P:${escapeWifi(wifiPass)};;`;
+      }
       case "email":
         return `mailto:${emailTo}?subject=${encodeURIComponent(emailSubject)}`;
       case "phone":
@@ -42,54 +58,37 @@ export function QrCodeTool() {
 
   const currentPayload = getPayload();
 
+  const encoded = useMemo(() => {
+    try { return { matrix: generateQrMatrix(currentPayload), error: null }; }
+    catch { return { matrix: null, error: "This content is too long for a QR code. Shorten it and try again." }; }
+  }, [currentPayload]);
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-
-    try {
-      const matrix = generateQrMatrix(currentPayload);
-      const cols = matrix.length;
-      canvas.width = size;
-      canvas.height = size;
-
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return;
-
-      // Draw background
-      ctx.fillStyle = bgColor;
-      ctx.fillRect(0, 0, size, size);
-
-      // Draw margin & cells
-      const margin = 2; // cells
-      const totalCells = cols + margin * 2;
-      const cellSize = size / totalCells;
-
-      ctx.fillStyle = fgColor;
-      for (let r = 0; r < cols; r++) {
-        for (let c = 0; c < cols; c++) {
-          if (matrix[r][c]) {
-            ctx.fillRect(
-              Math.floor((c + margin) * cellSize),
-              Math.floor((r + margin) * cellSize),
-              Math.ceil(cellSize),
-              Math.ceil(cellSize)
-            );
-          }
-        }
-      }
-    } catch {
-      // Handle payload overflow gracefully
-    }
-  }, [currentPayload, fgColor, bgColor, size]);
+    const matrix = encoded.matrix;
+    if (!matrix) { canvas.width = canvas.height = 0; return; }
+    canvas.width = canvas.height = size;
+    const context = canvas.getContext("2d");
+    if (!context) return;
+    context.fillStyle = bgColor;
+    context.fillRect(0, 0, size, size);
+    const margin = 4, cell = size / (matrix.length + margin * 2);
+    context.fillStyle = fgColor;
+    matrix.forEach((row, y) => row.forEach((black, x) => {
+      if (black) context.fillRect(Math.floor((x + margin) * cell), Math.floor((y + margin) * cell), Math.ceil(cell), Math.ceil(cell));
+    }));
+  }, [encoded, fgColor, bgColor, size]);
 
   const downloadPng = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const link = document.createElement("a");
-    link.download = `qrcode-${Date.now()}.png`;
-    link.href = canvas.toDataURL("image/png");
-    link.click();
+    if (encoded.error || error) return;
+    canvas.toBlob((blob) => {
+      if (blob) downloadBlob(blob, `qrcode-${Date.now()}.png`);
+      else setError("Could not export QR image.");
+    }, "image/png");
   };
 
   const copyToClipboard = async () => {
@@ -130,6 +129,7 @@ export function QrCodeTool() {
           <div className="flex flex-wrap gap-2 border-b border-slate-200 pb-3">
             {[
               { type: "url", label: "Website URL", icon: Globe },
+              { type: "whatsapp", label: "WhatsApp Chat", icon: MessageCircle },
               { type: "wifi", label: "WiFi Network", icon: Wifi },
               { type: "text", label: "Plain Text", icon: QrCode },
               { type: "email", label: "Email", icon: Mail },
@@ -163,6 +163,41 @@ export function QrCodeTool() {
                   placeholder="https://example.com"
                   className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-violet-500 focus:bg-white"
                 />
+              </div>
+            )}
+
+            {qrType === "whatsapp" && (
+              <div className="space-y-3">
+                <div>
+                  <label className="mb-1 block text-xs font-semibold text-slate-700">
+                    WhatsApp Phone Number (with Country Code)
+                  </label>
+                  <input
+                    type="tel"
+                    value={whatsappPhone}
+                    onChange={(e) => setWhatsappPhone(e.target.value)}
+                    placeholder="e.g. +1 555 123 4567 or 919876543210"
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800 outline-none focus:border-violet-500 focus:bg-white"
+                  />
+                  <p className="mt-1 text-[11px] text-slate-400">
+                    Include country code without any spaces or symbols (e.g., +1 for US, +91 for India, +44 for UK).
+                  </p>
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-semibold text-slate-700">
+                    Pre-filled Message (Optional)
+                  </label>
+                  <textarea
+                    value={whatsappMessage}
+                    onChange={(e) => setWhatsappMessage(e.target.value)}
+                    rows={3}
+                    placeholder="Hi! I'm interested in your product / service..."
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-800 outline-none focus:border-violet-500 focus:bg-white"
+                  />
+                  <p className="mt-1 text-[11px] text-slate-400">
+                    When scanned, WhatsApp opens directly with this chat and message ready to send.
+                  </p>
+                </div>
               </div>
             )}
 
@@ -301,6 +336,7 @@ export function QrCodeTool() {
           </div>
         </div>
 
+        {(encoded.error || error) && <p role="alert" className="text-sm text-red-600">{encoded.error || error}</p>}
         {/* Live Preview & Actions */}
         <div className="flex flex-col items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 p-6 text-center">
           <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white p-3 shadow-md">
@@ -314,6 +350,7 @@ export function QrCodeTool() {
           <div className="mt-5 flex flex-wrap justify-center gap-2">
             <button
               type="button"
+              disabled={Boolean(encoded.error || error)}
               onClick={downloadPng}
               className="inline-flex items-center gap-2 rounded-xl bg-violet-600 px-4 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-violet-700"
             >
@@ -322,6 +359,7 @@ export function QrCodeTool() {
             </button>
             <button
               type="button"
+              disabled={Boolean(error)}
               onClick={copyToClipboard}
               className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-100"
             >

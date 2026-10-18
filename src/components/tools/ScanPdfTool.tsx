@@ -30,10 +30,6 @@ export function ScanPdfTool() {
         video: { facingMode: "environment", width: { ideal: 1920 }, height: { ideal: 1080 } },
       });
       streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.play();
-      }
       setCameraActive(true);
     } catch (err) {
       setError(
@@ -41,6 +37,14 @@ export function ScanPdfTool() {
       );
     }
   };
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (cameraActive && video && streamRef.current) {
+      video.srcObject = streamRef.current;
+      void video.play().catch(() => setError("Could not show the camera preview. Try uploading a photo instead."));
+    }
+  }, [cameraActive]);
 
   const stopCamera = () => {
     if (streamRef.current) {

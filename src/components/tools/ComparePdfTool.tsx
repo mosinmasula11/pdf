@@ -114,7 +114,7 @@ export function ComparePdfTool() {
         <div>
           <h2 className="text-xl font-semibold text-slate-900">Compare PDF Files</h2>
           <p className="text-sm text-slate-500">
-            Compare two PDF document versions side by side and highlight differences.
+            Compare extracted PDF text and highlight additions or removals. Images and layout changes are not compared.
           </p>
         </div>
       </div>

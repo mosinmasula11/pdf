@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { PDFDocument } from "pdf-lib";
+import { unlockPdfBytes } from "@/lib/pdf-security";
 import { Unlock, Download, LoaderCircle, CheckCircle2, KeyRound } from "lucide-react";
 import { downloadBlob, formatBytes } from "@/lib/browser-utils";
 
@@ -38,13 +38,7 @@ export function UnlockPdfTool() {
 
     try {
       const arrayBuffer = await file.arrayBuffer();
-      // Try to load with fault-tolerant ignoreEncryption flag
-      const pdfDoc = await PDFDocument.load(arrayBuffer, {
-        ignoreEncryption: true,
-      });
-
-      // Strip encryption dictionaries and re-serialize
-      const pdfBytes = await pdfDoc.save();
+      const pdfBytes = await unlockPdfBytes(arrayBuffer, password);
       const buffer = pdfBytes.buffer.slice(
         pdfBytes.byteOffset,
         pdfBytes.byteOffset + pdfBytes.byteLength
@@ -56,7 +50,7 @@ export function UnlockPdfTool() {
     } catch (err) {
       setError(
         err instanceof Error
-          ? `Could not unlock: ${err.message}`
+          ? `Could not unlock: check the PDF password and try again. ${err.message}`
           : "The PDF is strongly encrypted with an open password. Please verify the credentials."
       );
     } finally {

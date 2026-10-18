@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useRef } from "react";
-import { PDFDocument } from "pdf-lib";
+import { useState } from "react";
+import { htmlToPdf } from "@/lib/html-pdf";
 import { Code2, Download, LoaderCircle, CheckCircle2, Globe, FileCode } from "lucide-react";
 import { downloadBlob } from "@/lib/browser-utils";
 
@@ -35,7 +35,7 @@ export function HtmlToPdfTool() {
   const [error, setError] = useState<string | null>(null);
   const [resultBlob, setResultBlob] = useState<Blob | null>(null);
 
-  const iframeRef = useRef<HTMLIFrameElement | null>(null);
+
 
   const handleFileUpload = (incoming: FileList | null) => {
     if (!incoming || !incoming[0]) return;
@@ -51,80 +51,23 @@ export function HtmlToPdfTool() {
   };
 
   const convertHtml = async () => {
+    setResultBlob(null);
     setProcessing(true);
     setError(null);
 
     try {
       let finalHtml = htmlCode;
       if (mode === "url") {
-        finalHtml = `
-          <div style="font-family: sans-serif; padding: 40px; text-align: center;">
-            <h1 style="color: #2563eb;">Captured URL Reference</h1>
-            <p style="font-size: 16px; color: #475569;">Target: <strong>${urlInput}</strong></p>
-            <div style="margin: 30px auto; max-width: 600px; padding: 20px; background: #f1f5f9; border-radius: 12px; text-align: left;">
-              <p>Webpage snapshots require local CORS rendering. The snapshot reference has been compiled into this secure PDF document.</p>
-            </div>
-          </div>
-        `;
+        let address: URL;
+        try { address = new URL(urlInput); } catch { throw new Error("Enter a valid webpage URL."); }
+        if (!/^https?:$/.test(address.protocol)) throw new Error("Use an HTTP or HTTPS webpage URL.");
+        let response: Response;
+        try { response = await fetch(address.href, { credentials: "omit", signal: AbortSignal.timeout(15000) }); }
+        catch { throw new Error("This website does not allow browser access. Save its HTML and use Upload .html File, or use your browser's Print to PDF."); }
+        if (!response.ok) throw new Error(`Could not load the webpage (${response.status}).`);
+        finalHtml = await response.text();
       }
-
-      // Render HTML into SVG foreignObject -> Canvas -> PDF
-      const svg = `
-        <svg xmlns="http://www.w3.org/2000/svg" width="794" height="1123">
-          <foreignObject width="100%" height="100%">
-            <div xmlns="http://www.w3.org/1999/xhtml">
-              ${finalHtml}
-            </div>
-          </foreignObject>
-        </svg>
-      `;
-
-      const img = new Image();
-      const svgBlob = new Blob([svg], { type: "image/svg+xml;charset=utf-8" });
-      const url = URL.createObjectURL(svgBlob);
-
-      const canvas = document.createElement("canvas");
-      canvas.width = 794; // standard A4 @ 96 DPI
-      canvas.height = 1123;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) throw new Error("Canvas context is unavailable.");
-
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      await new Promise<void>((resolve, reject) => {
-        img.onload = () => {
-          ctx.drawImage(img, 0, 0);
-          URL.revokeObjectURL(url);
-          resolve();
-        };
-        img.onerror = () => {
-          URL.revokeObjectURL(url);
-          // Fallback simple draw if foreignObject is blocked by SVG parser
-          ctx.font = "16px sans-serif";
-          ctx.fillStyle = "#1e293b";
-          ctx.fillText("HTML Document Export", 50, 60);
-          resolve();
-        };
-        img.src = url;
-      });
-
-      const jpgDataUrl = canvas.toDataURL("image/jpeg", 0.92);
-      const res = await fetch(jpgDataUrl);
-      const imgBuffer = await res.arrayBuffer();
-
-      const pdfDoc = await PDFDocument.create();
-      const page = pdfDoc.addPage([595.28, 841.89]); // A4
-      const embedded = await pdfDoc.embedJpg(imgBuffer);
-
-      page.drawImage(embedded, {
-        x: 0,
-        y: 0,
-        width: 595.28,
-        height: 841.89,
-      });
-
-      const pdfBytes = await pdfDoc.save();
+      const pdfBytes = await htmlToPdf(finalHtml);
       const buffer = pdfBytes.buffer.slice(
         pdfBytes.byteOffset,
         pdfBytes.byteOffset + pdfBytes.byteLength
@@ -148,7 +91,7 @@ export function HtmlToPdfTool() {
         <div>
           <h2 className="text-xl font-semibold text-slate-900">HTML to PDF</h2>
           <p className="text-sm text-slate-500">
-            Convert HTML markup, uploaded web templates, or webpages into PDF files.
+            Render static HTML across PDF pages. Scripts and external resources are excluded. URL mode requires the website to allow browser access.
           </p>
         </div>
       </div>
@@ -156,7 +99,7 @@ export function HtmlToPdfTool() {
       <div className="flex gap-2 border-b border-slate-200 pb-3">
         <button
           type="button"
-          onClick={() => setMode("code")}
+          onClick={() => { setMode("code"); setResultBlob(null); setError(null); }}
           className={`flex items-center gap-1.5 rounded-xl px-3.5 py-1.5 text-xs font-semibold transition ${
             mode === "code"
               ? "bg-indigo-600 text-white"
@@ -168,7 +111,7 @@ export function HtmlToPdfTool() {
         </button>
         <button
           type="button"
-          onClick={() => setMode("file")}
+          onClick={() => { setMode("file"); setResultBlob(null); setError(null); }}
           className={`flex items-center gap-1.5 rounded-xl px-3.5 py-1.5 text-xs font-semibold transition ${
             mode === "file"
               ? "bg-indigo-600 text-white"
@@ -180,7 +123,7 @@ export function HtmlToPdfTool() {
         </button>
         <button
           type="button"
-          onClick={() => setMode("url")}
+          onClick={() => { setMode("url"); setResultBlob(null); setError(null); }}
           className={`flex items-center gap-1.5 rounded-xl px-3.5 py-1.5 text-xs font-semibold transition ${
             mode === "url"
               ? "bg-indigo-600 text-white"
@@ -201,7 +144,7 @@ export function HtmlToPdfTool() {
             <textarea
               rows={9}
               value={htmlCode}
-              onChange={(e) => setHtmlCode(e.target.value)}
+              onChange={(e) => { setHtmlCode(e.target.value); setResultBlob(null); }}
               className="w-full rounded-2xl border border-slate-200 bg-slate-900 p-4 font-mono text-xs text-emerald-400 outline-none focus:border-indigo-500"
             />
           </div>
@@ -229,7 +172,7 @@ export function HtmlToPdfTool() {
             <input
               type="url"
               value={urlInput}
-              onChange={(e) => setUrlInput(e.target.value)}
+              onChange={(e) => { setUrlInput(e.target.value); setResultBlob(null); }}
               placeholder="https://example.com"
               className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm outline-none focus:border-indigo-500"
             />

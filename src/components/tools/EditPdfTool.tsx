@@ -1,20 +1,12 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { PDFDocument, rgb } from "pdf-lib";
-import { Edit3, Download, LoaderCircle, CheckCircle2, Type, PenTool, Highlighter, Undo, Trash2 } from "lucide-react";
-import { downloadBlob, formatBytes } from "@/lib/browser-utils";
+import { PDFDocument, degrees } from "pdf-lib";
+import { Edit3, Download, LoaderCircle, CheckCircle2, Type, PenTool, Highlighter, Undo } from "lucide-react";
+import { downloadBlob } from "@/lib/browser-utils";
 import { getPdfJs } from "@/lib/pdfjs-helper";
 
 type ToolMode = "draw" | "highlight" | "text";
-
-interface TextAnnotation {
-  x: number;
-  y: number;
-  text: string;
-  color: string;
-  size: number;
-}
 
 export function EditPdfTool() {
   const [file, setFile] = useState<File | null>(null);
@@ -24,7 +16,6 @@ export function EditPdfTool() {
   const [brushColor, setBrushColor] = useState<string>("#2563eb");
   const [brushSize, setBrushSize] = useState<number>(3);
   const [textInput, setTextInput] = useState<string>("Sample Note");
-  const [textAnnotations, setTextAnnotations] = useState<TextAnnotation[]>([]);
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [resultBlob, setResultBlob] = useState<Blob | null>(null);
@@ -32,6 +23,9 @@ export function EditPdfTool() {
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const isDrawing = useRef(false);
+  const previewVersion = useRef(0);
+  const pageImages = useRef(new Map<number, string>());
+  const readyPage = useRef(0);
   const lastPos = useRef<{ x: number; y: number } | null>(null);
 
   const handleFile = async (incoming: FileList | null) => {
@@ -47,13 +41,13 @@ export function EditPdfTool() {
       const pdfjs = await getPdfJs();
       const arrayBuffer = await selected.arrayBuffer();
       const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
+      pageImages.current.clear();
       setFile(selected);
       setTotalPages(pdf.numPages);
       setCurrentPage(1);
-      setTextAnnotations([]);
       setResultBlob(null);
       setError(null);
-      renderPagePreview(selected, 1);
+
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load PDF.");
     }
@@ -61,14 +55,17 @@ export function EditPdfTool() {
 
   const renderPagePreview = async (pdfFile: File, pageNum: number) => {
     try {
+      readyPage.current = 0;
       const pdfjs = await getPdfJs();
       const arrayBuffer = await pdfFile.arrayBuffer();
       const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
       const page = await pdf.getPage(pageNum);
       const viewport = page.getViewport({ scale: 1.2 });
 
-      const canvas = canvasRef.current;
-      if (!canvas) return;
+      const visibleCanvas = canvasRef.current;
+      if (!visibleCanvas) return;
+      const version = ++previewVersion.current;
+      const canvas = document.createElement("canvas");
 
       canvas.width = viewport.width;
       canvas.height = viewport.height;
@@ -76,23 +73,36 @@ export function EditPdfTool() {
       if (!ctx) return;
 
       await page.render({ canvas, canvasContext: ctx, viewport }).promise;
+      const saved = pageImages.current.get(pageNum);
+      if (saved) {
+        const image = new Image();
+        await new Promise<void>((resolve, reject) => { image.onload = () => resolve(); image.onerror = () => reject(new Error("Could not restore annotations.")); image.src = saved; });
+        ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+      }
+      if (version !== previewVersion.current) return;
+      visibleCanvas.width = canvas.width;
+      visibleCanvas.height = canvas.height;
+      visibleCanvas.getContext("2d")?.drawImage(canvas, 0, 0);
+      readyPage.current = pageNum;
     } catch (err) {
-      // ignore
+      setError(err instanceof Error ? err.message : "Could not render PDF preview.");
     }
   };
 
   useEffect(() => {
-    if (file) {
-      renderPagePreview(file, currentPage);
-    }
-  }, [currentPage]);
+    if (!file) return;
+    const frame = requestAnimationFrame(() => { void renderPagePreview(file, currentPage); });
+    return () => cancelAnimationFrame(frame);
+  }, [file, currentPage]);
 
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+    if (readyPage.current !== currentPage) return;
+    setResultBlob(null);
     const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const x = (e.clientX - rect.left) * canvas.width / rect.width;
+    const y = (e.clientY - rect.top) * canvas.height / rect.height;
 
     if (toolMode === "text") {
       if (!textInput.trim()) return;
@@ -101,10 +111,6 @@ export function EditPdfTool() {
       ctx.font = "16px sans-serif";
       ctx.fillStyle = brushColor;
       ctx.fillText(textInput, x, y);
-      setTextAnnotations((prev) => [
-        ...prev,
-        { x, y, text: textInput, color: brushColor, size: 16 },
-      ]);
       return;
     }
 
@@ -156,25 +162,24 @@ export function EditPdfTool() {
     setError(null);
 
     try {
-      const canvas = canvasRef.current;
-      const imgDataUrl = canvas.toDataURL("image/jpeg", 0.9);
-      const imgRes = await fetch(imgDataUrl);
-      const imgBuffer = await imgRes.arrayBuffer();
-
-      const arrayBuffer = await file.arrayBuffer();
-      const pdfDoc = await PDFDocument.load(arrayBuffer);
-      const embeddedImg = await pdfDoc.embedJpg(imgBuffer);
-
-      const targetPage = pdfDoc.getPage(currentPage - 1);
-      const { width, height } = targetPage.getSize();
-
-      // Draw the canvas modifications on top of the target page
-      targetPage.drawImage(embeddedImg, {
-        x: 0,
-        y: 0,
-        width,
-        height,
-      });
+      if (readyPage.current !== currentPage) throw new Error("Wait for the page preview to finish loading.");
+      pageImages.current.set(currentPage, canvasRef.current.toDataURL("image/png"));
+      const pdfDoc = await PDFDocument.load(await file.arrayBuffer());
+      for (const [number, image] of pageImages.current) {
+        const embedded = await pdfDoc.embedPng(image);
+        const target = pdfDoc.getPage(number - 1);
+        // Canvas follows the rendered viewport, including page rotation.
+        const rotation = ((target.getRotation().angle % 360) + 360) % 360;
+        if (rotation) {
+          // Reset the page to the visible orientation before applying the edited pixels.
+          const size = target.getSize();
+          const rotated = rotation === 90 || rotation === 270;
+          target.setRotation(degrees(0));
+          if (rotated) target.setSize(size.height, size.width);
+        }
+        const { width, height } = target.getSize();
+        target.drawImage(embedded, { x: 0, y: 0, width, height });
+      }
 
       const pdfBytes = await pdfDoc.save();
       const buffer = pdfBytes.buffer.slice(
@@ -223,7 +228,7 @@ export function EditPdfTool() {
               <button
                 type="button"
                 disabled={currentPage <= 1}
-                onClick={() => setCurrentPage((p) => p - 1)}
+                onClick={() => { if (readyPage.current === currentPage && canvasRef.current) pageImages.current.set(currentPage, canvasRef.current.toDataURL("image/png")); setCurrentPage((p) => p - 1); }}
                 className="rounded-lg border bg-white px-3 py-1 text-xs font-semibold disabled:opacity-40"
               >
                 Previous Page
@@ -231,7 +236,7 @@ export function EditPdfTool() {
               <button
                 type="button"
                 disabled={currentPage >= totalPages}
-                onClick={() => setCurrentPage((p) => p + 1)}
+                onClick={() => { if (readyPage.current === currentPage && canvasRef.current) pageImages.current.set(currentPage, canvasRef.current.toDataURL("image/png")); setCurrentPage((p) => p + 1); }}
                 className="rounded-lg border bg-white px-3 py-1 text-xs font-semibold disabled:opacity-40"
               >
                 Next Page
@@ -305,7 +310,7 @@ export function EditPdfTool() {
 
             <button
               type="button"
-              onClick={() => renderPagePreview(file, currentPage)}
+              onClick={() => { pageImages.current.delete(currentPage); setResultBlob(null); void renderPagePreview(file, currentPage); }}
               className="ml-auto flex items-center gap-1 text-xs font-semibold text-slate-500 hover:text-slate-800"
             >
               <Undo className="h-3.5 w-3.5" />

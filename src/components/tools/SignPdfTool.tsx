@@ -21,6 +21,7 @@ export function SignPdfTool() {
 
   const sigCanvasRef = useRef < HTMLCanvasElement | null > (null);
   const isDrawing = useRef(false);
+  const hasInk = useRef(false);
   const lastPos = useRef < { x: number; y: number } | null > (null);
   const uploadedSigRef = useRef < string | null > (null);
 
@@ -51,10 +52,11 @@ export function SignPdfTool() {
     const canvas = sigCanvasRef.current;
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
+    setResultBlob(null);
     isDrawing.current = true;
     lastPos.current = {
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top,
+      x: (e.clientX - rect.left) * canvas.width / rect.width,
+      y: (e.clientY - rect.top) * canvas.height / rect.height,
     };
   };
 
@@ -69,6 +71,7 @@ export function SignPdfTool() {
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
+    hasInk.current = true;
     ctx.beginPath();
     ctx.moveTo(lastPos.current.x, lastPos.current.y);
     ctx.lineTo(x, y);
@@ -91,6 +94,8 @@ export function SignPdfTool() {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    hasInk.current = false;
+    setResultBlob(null);
   };
 
   const handleSigUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -113,9 +118,10 @@ export function SignPdfTool() {
 
     if (signMode === "draw") {
       const drawnCanvas = sigCanvasRef.current;
-      if (!drawnCanvas) throw new Error("Signature pad is empty.");
+      if (!drawnCanvas || !hasInk.current) throw new Error("Draw a signature before signing, or choose Type Name / Upload Image.");
       ctx.drawImage(drawnCanvas, 0, 0, canvas.width, canvas.height);
     } else if (signMode === "type") {
+      if (!typedName.trim()) throw new Error("Enter a name for the signature.");
       ctx.font = "italic 44px cursive, serif";
       ctx.fillStyle = "#1e3a8a";
       ctx.fillText(typedName || "Signature", 20, 90);
@@ -291,7 +297,7 @@ export function SignPdfTool() {
               <input
                 type="text"
                 value={typedName}
-                onChange={(e) => setTypedName(e.target.value)}
+                onChange={(e) => { setTypedName(e.target.value); setResultBlob(null); }}
                 placeholder="e.g. John Doe"
                 className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-500"
               />
@@ -339,7 +345,7 @@ export function SignPdfTool() {
               </label>
               <select
                 value={sigPosition}
-                onChange={(e) => setSigPosition(e.target.value as any)}
+                onChange={(e) => setSigPosition(e.target.value as typeof sigPosition)}
                 className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
               >
                 <option value="bottom-right">Bottom Right</option>

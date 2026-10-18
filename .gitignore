@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Generated local OCR assets and QA fixtures
+/public/ocr/
+/.qa/

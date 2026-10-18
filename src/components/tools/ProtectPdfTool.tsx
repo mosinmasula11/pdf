@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { PDFDocument, PDFName, PDFString, PDFDict } from "pdf-lib";
+import { protectPdfBytes } from "@/lib/pdf-security";
 import { Lock, Download, LoaderCircle, CheckCircle2, ShieldCheck, Eye, EyeOff } from "lucide-react";
 import { downloadBlob, formatBytes } from "@/lib/browser-utils";
 
@@ -53,23 +53,7 @@ export function ProtectPdfTool() {
 
     try {
       const arrayBuffer = await file.arrayBuffer();
-      const pdfDoc = await PDFDocument.load(arrayBuffer);
-
-      // Create an encryption security dictionary
-      // PDF standard encryption uses standard handler
-      const encryptDict = pdfDoc.context.obj({
-        Filter: PDFName.of("Standard"),
-        V: 2,
-        R: 3,
-        O: PDFString.of(`O_${password}_${Date.now()}`),
-        U: PDFString.of(`U_${password}`),
-        P: -3904, // Permissions flag: restricts printing & copying
-      });
-
-      const encryptRef = pdfDoc.context.register(encryptDict);
-      pdfDoc.catalog.set(PDFName.of("Encrypt"), encryptRef);
-
-      const pdfBytes = await pdfDoc.save({ useObjectStreams: false });
+      const pdfBytes = await protectPdfBytes(arrayBuffer, password, { restrictPrinting, restrictCopying });
       const buffer = pdfBytes.buffer.slice(
         pdfBytes.byteOffset,
         pdfBytes.byteOffset + pdfBytes.byteLength
@@ -127,6 +111,7 @@ export function ProtectPdfTool() {
                 />
                 <button
                   type="button"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600"
                 >

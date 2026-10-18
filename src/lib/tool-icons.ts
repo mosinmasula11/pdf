@@ -19,6 +19,7 @@ import {
   Hash,
   ImageDown,
   Images,
+  Key,
   KeyRound,
   Languages,
   LayoutGrid,
@@ -31,6 +32,7 @@ import {
   RotateCw,
   ScanText,
   Scissors,
+  Send,
   Signature,
   Sparkles,
   Stamp,
@@ -108,6 +110,8 @@ export const toolIcons: Record<string, LucideIcon> = {
   "case-converter": Type,
   "base64-converter": Binary,
   "password-generator": KeyRound,
+  "api-client": Send,
+  "api-key-generator": Key,
 };
 
 export function getToolIcon(id: string): LucideIcon {

@@ -25,6 +25,7 @@ export function PowerpointToPdfTool() {
     setResultBlob(null);
     setSlides([]);
     const selected = incoming[0];
+    if (!/\.(pptx)$/i.test(selected.name)) { setError("Choose a PPTX file. Legacy binary formats are not supported."); setFile(null); return; }
     const name = selected.name.toLowerCase();
     if (!name.endsWith(".pptx") && !name.endsWith(".ppt")) {
       setError("Please choose a PowerPoint file (.pptx or .ppt).");
@@ -94,13 +95,7 @@ export function PowerpointToPdfTool() {
         }
       }
 
-      if (parsedSlides.length === 0) {
-        parsedSlides.push({
-          slideNumber: 1,
-          title: file.name.replace(/\.[^/.]+$/, ""),
-          points: ["PowerPoint Presentation Slide", "Exported to high resolution PDF format"],
-        });
-      }
+      if (parsedSlides.length === 0) throw new Error("No slide text was found. This converter supports text-based PPTX slides, not legacy PPT files or image-only presentations.");
 
       setSlides(parsedSlides);
 
@@ -212,14 +207,14 @@ export function PowerpointToPdfTool() {
         <div>
           <h2 className="text-xl font-semibold text-slate-900">POWERPOINT to PDF</h2>
           <p className="text-sm text-slate-500">
-            Convert PPTX presentation decks into slide-by-slide PDF documents.
+            Export text from PPTX slides into a simple PDF presentation. Original artwork, animations and slide layout are not preserved.
           </p>
         </div>
       </div>
 
       <input
         type="file"
-        accept=".pptx,.ppt"
+        accept=".pptx"
         onChange={(e) => handleFile(e.target.files)}
         className="block w-full rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-700"
       />

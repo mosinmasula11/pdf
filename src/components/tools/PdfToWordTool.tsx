@@ -155,7 +155,7 @@ export function PdfToWordTool() {
         <div>
           <h2 className="text-xl font-semibold text-slate-900">PDF to WORD</h2>
           <p className="text-sm text-slate-500">
-            Convert PDF documents into editable Microsoft Word (.docx) files.
+            Extract selectable PDF text into an editable Word document. Images and original layout are not preserved.
           </p>
         </div>
       </div>

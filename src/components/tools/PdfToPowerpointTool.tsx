@@ -190,7 +190,7 @@ export function PdfToPowerpointTool() {
         <div>
           <h2 className="text-xl font-semibold text-slate-900">PDF to POWERPOINT</h2>
           <p className="text-sm text-slate-500">
-            Convert PDF pages into high-resolution PowerPoint (.pptx) presentation slides.
+            Create PowerPoint slides from page images. Text and graphics within each slide are not independently editable.
           </p>
         </div>
       </div>

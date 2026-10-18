@@ -122,7 +122,7 @@ export function ResizeImageToCustomKbTool() {
       }
 
       if (!bestCandidate) {
-        throw new Error("The target size could not be reached with the current image. Try a lower target or allow more compression.");
+        throw new Error("The target size could not be reached with the current image. Try a higher target, smaller dimensions, or more compression.");
       }
 
       const preview = URL.createObjectURL(bestCandidate.blob);

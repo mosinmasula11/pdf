@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { PDFDocument } from "pdf-lib";
+import { PDFDocument } from "@cantoo/pdf-lib";
 import { Wrench, Download, LoaderCircle, CheckCircle2, ShieldAlert } from "lucide-react";
 import { downloadBlob, formatBytes } from "@/lib/browser-utils";
 
@@ -56,7 +56,7 @@ export function RepairPdfTool() {
 
       // Load with pdf-lib fault tolerance
       const pdfDoc = await PDFDocument.load(arrayBuffer, {
-        ignoreEncryption: true,
+        throwOnInvalidObject: false,
         updateMetadata: true,
       });
 
