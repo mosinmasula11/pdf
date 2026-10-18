@@ -10,6 +10,8 @@ export function JpgToPdfTool() {
   const [processing, setProcessing] = useState(false);
   const [outputSize, setOutputSize] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [resultBlob, setResultBlob] = useState<Blob | null>(null);
+  const [downloadName, setDownloadName] = useState<string>("converted.pdf");
 
   const handleFiles = (incoming: FileList | null) => {
     if (!incoming) return;
@@ -55,7 +57,8 @@ export function JpgToPdfTool() {
       const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
       const blob = new Blob([buffer], { type: "application/pdf" });
       setOutputSize(blob.size);
-      downloadBlob(blob, `converted-${Date.now()}.pdf`);
+      setResultBlob(blob);
+      setDownloadName(`converted-${Date.now()}.pdf`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Conversion failed.");
     } finally {
@@ -119,9 +122,22 @@ export function JpgToPdfTool() {
       )}
 
       {outputSize !== null && (
-        <div className="mt-5 flex items-center justify-between rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-          <span>Output size</span>
-          <span className="font-semibold">{formatBytes(outputSize)}</span>
+        <div className="mt-5 space-y-3">
+          <div className="flex items-center justify-between rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+            <span>Output size</span>
+            <span className="font-semibold">{formatBytes(outputSize)}</span>
+          </div>
+
+          {resultBlob && (
+            <button
+              type="button"
+              onClick={() => downloadBlob(resultBlob, downloadName)}
+              className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 font-medium text-white"
+            >
+              <Download className="h-4 w-4" />
+              Download PDF
+            </button>
+          )}
         </div>
       )}
 

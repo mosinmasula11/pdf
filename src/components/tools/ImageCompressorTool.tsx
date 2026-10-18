@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Image as ImageIcon, LoaderCircle, SlidersHorizontal } from "lucide-react";
+import { Download, Image as ImageIcon, LoaderCircle, SlidersHorizontal } from "lucide-react";
 import { downloadBlob, formatBytes } from "@/lib/browser-utils";
 
 export function ImageCompressorTool() {
@@ -13,6 +13,8 @@ export function ImageCompressorTool() {
   const [outputSize, setOutputSize] = useState<number | null>(null);
   const [originalSize, setOriginalSize] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [resultBlob, setResultBlob] = useState<Blob | null>(null);
+  const [downloadName, setDownloadName] = useState<string>("compressed.jpg");
 
   const handleFile = (incoming: FileList | null) => {
     if (!incoming || !incoming[0]) return;
@@ -65,7 +67,8 @@ export function ImageCompressorTool() {
         return preview;
       });
       setOutputSize(compressedBlob.size);
-      downloadBlob(compressedBlob, `${file.name.replace(/\.[^/.]+$/, "") || "compressed"}.${outputType === "image/png" ? "png" : outputType === "image/webp" ? "webp" : "jpg"}`);
+      setResultBlob(compressedBlob);
+      setDownloadName(`${file.name.replace(/\.[^/.]+$/, "") || "compressed"}.${outputType === "image/png" ? "png" : outputType === "image/webp" ? "webp" : "jpg"}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Compression failed.");
     } finally {
@@ -132,6 +135,19 @@ export function ImageCompressorTool() {
         <div className="mt-5 grid gap-2 text-sm text-slate-700 sm:grid-cols-2">
           <div className="rounded-2xl bg-slate-50 p-3">Original: {formatBytes(originalSize)}</div>
           <div className="rounded-2xl bg-emerald-50 p-3 text-emerald-700">Compressed: {formatBytes(outputSize)}</div>
+        </div>
+      )}
+
+      {resultBlob && (
+        <div className="mt-5">
+          <button
+            type="button"
+            onClick={() => downloadBlob(resultBlob, downloadName)}
+            className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 font-medium text-white"
+          >
+            <Download className="h-4 w-4" />
+            Download compressed image
+          </button>
         </div>
       )}
 

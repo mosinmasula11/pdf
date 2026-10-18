@@ -3,18 +3,22 @@
 import { useState } from "react";
 import JSZip from "jszip";
 import { Download, ImageDown, LoaderCircle } from "lucide-react";
-import { formatBytes } from "@/lib/browser-utils";
+import { downloadBlob, formatBytes } from "@/lib/browser-utils";
 
 export function PdfToJpgTool() {
   const [file, setFile] = useState<File | null>(null);
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pageCount, setPageCount] = useState<number | null>(null);
+  const [resultBlob, setResultBlob] = useState<Blob | null>(null);
+  const [downloadName, setDownloadName] = useState("converted.zip");
 
   const handleFile = (incoming: FileList | null) => {
     if (!incoming || !incoming[0]) return;
     const selected = incoming[0];
     setFile(selected);
+    setResultBlob(null);
+    setPageCount(null);
     setError(selected.type === "application/pdf" || selected.name.toLowerCase().endsWith(".pdf") ? null : "Please choose a PDF file.");
   };
 
@@ -30,12 +34,14 @@ export function PdfToJpgTool() {
     try {
       const pdfjsLib = await import("pdfjs-dist");
       const pdfjs = pdfjsLib as typeof import("pdfjs-dist");
-      pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.mjs`;
+
+      const workerUrl = new URL("pdfjs-dist/build/pdf.worker.min.mjs", import.meta.url).toString();
+      pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
 
       const buffer = await file.arrayBuffer();
       const pdf = await pdfjs.getDocument({ data: buffer }).promise;
       const zip = new JSZip();
-      const pages: Blob[] = [];
+      const baseName = file.name.replace(/\.pdf$/i, "") || "converted";
 
       for (let i = 1; i <= pdf.numPages; i += 1) {
         const page = await pdf.getPage(i);
@@ -54,18 +60,12 @@ export function PdfToJpgTool() {
           }, "image/jpeg", 0.9);
         });
 
-        pages.push(blob);
-        zip.file(`page-${i}.jpg`, blob);
+        zip.file(`${baseName}-page-${i}.jpg`, blob);
       }
 
       setPageCount(pdf.numPages);
-      const zipBlob = await zip.generateAsync({ type: "blob" });
-      const url = URL.createObjectURL(zipBlob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `${file.name.replace(/\.pdf$/i, "") || "converted"}.zip`;
-      link.click();
-      URL.revokeObjectURL(url);
+      setResultBlob(await zip.generateAsync({ type: "blob" }));
+      setDownloadName(`${baseName}.zip`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "PDF conversion failed.");
     } finally {
@@ -116,6 +116,19 @@ export function PdfToJpgTool() {
             <span>{formatBytes(file.size)}</span>
           </div>
           {pageCount !== null && <div className="mt-2 text-slate-600">Pages extracted: {pageCount}</div>}
+        </div>
+      )}
+
+      {resultBlob && (
+        <div className="mt-5">
+          <button
+            type="button"
+            onClick={() => downloadBlob(resultBlob, downloadName)}
+            className="inline-flex items-center gap-2 rounded-xl bg-amber-500 px-4 py-2.5 font-medium text-white"
+          >
+            <Download className="h-4 w-4" />
+            Download JPG files (ZIP)
+          </button>
         </div>
       )}
 

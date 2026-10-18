@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { LoaderCircle, Scissors, SlidersHorizontal } from "lucide-react";
+import { Download, LoaderCircle, Scissors, SlidersHorizontal } from "lucide-react";
 import { downloadBlob, formatBytes } from "@/lib/browser-utils";
 
 type OutputMode = "image/jpeg" | "image/png" | "image/webp";
@@ -25,6 +25,8 @@ export function ResizeImageToCustomKbTool() {
   const [outputSize, setOutputSize] = useState<number | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [resultBlob, setResultBlob] = useState<Blob | null>(null);
+  const [downloadName, setDownloadName] = useState<string>("optimized.jpg");
   const aspectRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -77,10 +79,16 @@ export function ResizeImageToCustomKbTool() {
       const targetBytes = targetKb * 1024;
       let bestCandidate: { blob: Blob; size: number; width: number; height: number; quality: number } | null = null;
 
+      const effectiveWidth = Math.max(1, width);
+      const effectiveHeight = Math.max(1, height);
+      const ratioX = effectiveWidth / img.width;
+      const ratioY = effectiveHeight / img.height;
+      const scale = Math.min(ratioX, ratioY, 1);
+
       for (let q = 0.95; q >= 0.15; q -= 0.05) {
-        for (let scale = 1; scale >= 0.35; scale -= 0.05) {
-          const finalWidth = Math.max(1, Math.round(img.width * scale));
-          const finalHeight = Math.max(1, Math.round(img.height * scale));
+        for (let currentScale = scale; currentScale >= 0.2; currentScale -= 0.05) {
+          const finalWidth = Math.max(1, Math.round(img.width * currentScale));
+          const finalHeight = Math.max(1, Math.round(img.height * currentScale));
           const canvas = document.createElement("canvas");
           canvas.width = finalWidth;
           canvas.height = finalHeight;
@@ -120,7 +128,8 @@ export function ResizeImageToCustomKbTool() {
         return preview;
       });
       setOutputSize(bestCandidate.size);
-      downloadBlob(bestCandidate.blob, `optimized-${Date.now()}.${toExtension(outputMode)}`);
+      setResultBlob(bestCandidate.blob);
+      setDownloadName(`optimized-${Date.now()}.${toExtension(outputMode)}`);
 
       URL.revokeObjectURL(objectUrl);
     } catch (err) {
@@ -234,6 +243,19 @@ export function ResizeImageToCustomKbTool() {
         <div className="mt-5 grid gap-2 text-sm text-slate-700 sm:grid-cols-2">
           <div className="rounded-2xl bg-slate-50 p-3">Original: {formatBytes(originalSize)}</div>
           <div className="rounded-2xl bg-violet-50 p-3 text-violet-700">Optimized: {formatBytes(outputSize)}</div>
+        </div>
+      )}
+
+      {resultBlob && (
+        <div className="mt-5">
+          <button
+            type="button"
+            onClick={() => downloadBlob(resultBlob, downloadName)}
+            className="inline-flex items-center gap-2 rounded-xl bg-violet-600 px-4 py-2.5 font-medium text-white"
+          >
+            <Download className="h-4 w-4" />
+            Download optimized image
+          </button>
         </div>
       )}
 

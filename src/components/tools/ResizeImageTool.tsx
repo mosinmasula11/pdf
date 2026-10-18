@@ -17,6 +17,8 @@ export function ResizeImageTool() {
   const [error, setError] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [imageMeta, setImageMeta] = useState<{ width: number; height: number } | null>(null);
+  const [resultBlob, setResultBlob] = useState<Blob | null>(null);
+  const [downloadName, setDownloadName] = useState<string>("resized.jpg");
 
   const accepted = useMemo(() => ["image/jpeg", "image/png", "image/webp"], []);
 
@@ -92,7 +94,8 @@ export function ResizeImageTool() {
         return nextUrl;
       });
       setOutputSize(result.size);
-      downloadBlob(result, `resized-${Date.now()}.${outputType === "image/png" ? "png" : outputType === "image/webp" ? "webp" : "jpg"}`);
+      setResultBlob(result);
+      setDownloadName(`resized-${Date.now()}.${outputType === "image/png" ? "png" : outputType === "image/webp" ? "webp" : "jpg"}`);
       URL.revokeObjectURL(objectUrl);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Resize failed.");
@@ -180,6 +183,19 @@ export function ResizeImageTool() {
         <div className="mt-5 grid gap-2 text-sm text-slate-700 sm:grid-cols-2">
           <div className="rounded-2xl bg-slate-50 p-3">Original: {formatBytes(originalSize)}</div>
           <div className="rounded-2xl bg-violet-50 p-3 text-violet-700">Output: {formatBytes(outputSize)}</div>
+        </div>
+      )}
+
+      {resultBlob && (
+        <div className="mt-5">
+          <button
+            type="button"
+            onClick={() => downloadBlob(resultBlob, downloadName)}
+            className="inline-flex items-center gap-2 rounded-xl bg-violet-600 px-4 py-2.5 font-medium text-white"
+          >
+            <Download className="h-4 w-4" />
+            Download resized image
+          </button>
         </div>
       )}
 

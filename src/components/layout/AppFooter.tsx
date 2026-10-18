@@ -32,7 +32,7 @@ export function AppFooter() {
           <ul className="space-y-3 text-sm text-slate-600">
             {navigation.slice(0, 4).map((item) => (
               <li key={item.href}>
-                <Link href={item.href}>{item.label}</Link>
+                <Link href={item.href} className="transition hover:text-violet-700">{item.label}</Link>
               </li>
             ))}
           </ul>
@@ -43,14 +43,14 @@ export function AppFooter() {
           <ul className="space-y-3 text-sm text-slate-600">
             {navigation.slice(4).map((item) => (
               <li key={item.href}>
-                <Link href={item.href}>{item.label}</Link>
+                <Link href={item.href} className="transition hover:text-violet-700">{item.label}</Link>
               </li>
             ))}
           </ul>
         </div>
       </div>
       <div className="border-t border-slate-200">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-5 text-sm text-slate-500 sm:px-6 lg:px-8">
+        <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-5 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
           <span>© 2026 {siteConfig.brandName}. All rights reserved.</span>
           <span>Made for private local file processing.</span>
         </div>

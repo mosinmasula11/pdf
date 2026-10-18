@@ -8,14 +8,14 @@ export default function HomePage() {
       <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm sm:p-8 lg:p-12">
         <div className="grid items-center gap-10 lg:grid-cols-[1.2fr_0.8fr]">
           <div>
-            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-violet-700">
+            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-violet-700 sm:text-xs">
               <Sparkles className="h-3.5 w-3.5" />
               Fast, free and private
             </div>
             <h1 className="max-w-xl text-4xl font-black tracking-tight text-slate-900 sm:text-5xl">
               Free Online PDF, Image & File Tools
             </h1>
-            <p className="mt-5 max-w-xl text-lg leading-8 text-slate-600">
+            <p className="mt-5 max-w-xl text-base leading-7 text-slate-600 sm:text-lg sm:leading-8">
               Compress, convert, resize, edit and manage your files online. Fast, free and private — your files stay in your browser.
             </p>
 
@@ -38,7 +38,7 @@ export default function HomePage() {
             </div>
           </div>
 
-          <div className="rounded-[2rem] bg-gradient-to-br from-slate-900 via-slate-800 to-violet-900 p-6 text-white shadow-2xl shadow-slate-900/10">
+          <div className="rounded-[2rem] bg-gradient-to-br from-slate-900 via-slate-800 to-violet-900 p-5 text-white shadow-2xl shadow-slate-900/10 sm:p-6">
             <div className="grid gap-4">
               {[
                 { label: "Tools ready", value: "50+" },
@@ -56,7 +56,7 @@ export default function HomePage() {
       </section>
 
       <section className="mt-16">
-        <div className="mb-8 flex items-end justify-between gap-4">
+        <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.2em] text-violet-600">Popular tools</p>
             <h2 className="mt-2 text-3xl font-bold text-slate-900">Most used utilities</h2>

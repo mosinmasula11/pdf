@@ -9,6 +9,8 @@ export function MergePdfTool() {
   const [files, setFiles] = useState<File[]>([]);
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [resultBlob, setResultBlob] = useState<Blob | null>(null);
+  const [downloadName, setDownloadName] = useState<string>("merged.pdf");
 
   const handleFiles = (incoming: FileList | null) => {
     if (!incoming) return;
@@ -38,7 +40,8 @@ export function MergePdfTool() {
       const mergedBytes = await destPdf.save();
       const buffer = mergedBytes.buffer.slice(mergedBytes.byteOffset, mergedBytes.byteOffset + mergedBytes.byteLength) as ArrayBuffer;
       const mergedBlob = new Blob([buffer], { type: "application/pdf" });
-      downloadBlob(mergedBlob, `merged-${Date.now()}.pdf`);
+      setResultBlob(mergedBlob);
+      setDownloadName(`merged-${Date.now()}.pdf`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Merge failed.");
     } finally {
@@ -92,6 +95,19 @@ export function MergePdfTool() {
               </li>
             ))}
           </ul>
+        </div>
+      )}
+
+      {resultBlob && (
+        <div className="mt-5">
+          <button
+            type="button"
+            onClick={() => downloadBlob(resultBlob, downloadName)}
+            className="inline-flex items-center gap-2 rounded-xl bg-sky-600 px-4 py-2.5 font-medium text-white"
+          >
+            <Download className="h-4 w-4" />
+            Download merged PDF
+          </button>
         </div>
       )}
 
