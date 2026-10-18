@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
 import { RepairPdfTool } from "@/components/tools/RepairPdfTool";
+import { createToolMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Repair PDF Files Online",
-  description: "Recover and repair damaged, corrupt or broken PDF files right in your web browser.",
-};
+export const metadata: Metadata = createToolMetadata("repair-pdf");
 
 export default function Page() {
   return (

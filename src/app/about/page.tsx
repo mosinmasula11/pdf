@@ -4,8 +4,11 @@ import { ShieldCheck, Zap, Lock, Globe, ExternalLink } from "lucide-react";
 import { siteConfig } from "@/lib/site-config";
 
 export const metadata: Metadata = {
-  title: "About Us",
-  description: `About ${siteConfig.brandName}. Fast, free and private online PDF, image and document productivity tools.`,
+  title: "About Us | Privacy-First Browser Tools",
+  description: `About ${siteConfig.brandName}. Fast, free and private online PDF, image and document productivity tools that process files locally.`,
+  alternates: {
+    canonical: "/about",
+  },
 };
 
 export default function AboutPage() {

@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
 import { OrganizePdfTool } from "@/components/tools/OrganizePdfTool";
+import { createToolMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Organize PDF Pages",
-  description: "Rearrange, rotate, delete and organize pages of your PDF document online for free.",
-};
+export const metadata: Metadata = createToolMetadata("organize-pdf");
 
 export default function Page() {
   return (

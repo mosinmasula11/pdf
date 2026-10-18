@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
 import { ProtectPdfTool } from "@/components/tools/ProtectPdfTool";
+import { createToolMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Protect PDF Online",
-  description: "Encrypt your PDF documents with secure password protection and permissions control.",
-};
+export const metadata: Metadata = createToolMetadata("protect-pdf");
 
 export default function Page() {
   return (

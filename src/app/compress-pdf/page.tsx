@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
 import { CompressPdfTool } from "@/components/tools/CompressPdfTool";
+import { createToolMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Compress PDF Online",
-  description: "Reduce PDF file size while retaining the best possible document and image quality.",
-};
+export const metadata: Metadata = createToolMetadata("compress-pdf");
 
 export default function Page() {
   return (

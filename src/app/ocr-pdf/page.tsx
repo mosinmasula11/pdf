@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
 import { OcrPdfTool } from "@/components/tools/OcrPdfTool";
+import { createToolMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "OCR PDF Online",
-  description: "Recognize and extract text from PDF documents with fast OCR.",
-};
+export const metadata: Metadata = createToolMetadata("ocr-pdf");
 
 export default function Page() {
   return (

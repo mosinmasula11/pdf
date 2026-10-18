@@ -4,9 +4,12 @@ import { Cookie, ShieldCheck, CheckCircle2 } from "lucide-react";
 import { siteConfig } from "@/lib/site-config";
 
 export const metadata: Metadata = {
-  title: "Cookie Policy",
+  title: "Cookie Policy | Privacy Disclosures",
   description:
     "Cookie Policy for MSYN Tools. Clear disclosures on functional and technical cookies used to operate our tools.",
+  alternates: {
+    canonical: "/cookie-policy",
+  },
 };
 
 export default function CookiePolicyPage() {

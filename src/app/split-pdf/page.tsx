@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
 import { SplitPdfTool } from "@/components/tools/SplitPdfTool";
+import { createToolMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Split PDF",
-  description: "Extract a page range from a PDF and save it as a separate file.",
-};
+export const metadata: Metadata = createToolMetadata("split-pdf");
 
 export default function Page() {
   return (

@@ -4,9 +4,12 @@ import { ShieldCheck, Lock, FileText, CheckCircle2, AlertCircle, HelpCircle } fr
 import { siteConfig } from "@/lib/site-config";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy",
+  title: "Privacy Policy | 100% Client-Side File Security",
   description:
     "Learn how MSYN Tools protects your files and privacy. Full GDPR and CCPA compliant privacy policy with local in-browser file security.",
+  alternates: {
+    canonical: "/privacy-policy",
+  },
 };
 
 export default function PrivacyPage() {

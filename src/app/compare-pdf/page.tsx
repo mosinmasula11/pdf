@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
 import { ComparePdfTool } from "@/components/tools/ComparePdfTool";
+import { createToolMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Compare PDF Files Online",
-  description: "Compare two PDF documents side by side to identify text and visual changes instantly.",
-};
+export const metadata: Metadata = createToolMetadata("compare-pdf");
 
 export default function Page() {
   return (

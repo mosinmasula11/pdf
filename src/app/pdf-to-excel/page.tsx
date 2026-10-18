@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
 import { PdfToExcelTool } from "@/components/tools/PdfToExcelTool";
+import { createToolMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "PDF to Excel Converter Online",
-  description: "Extract data and tabular figures from PDF documents into editable Excel spreadsheets and CSV tables.",
-};
+export const metadata: Metadata = createToolMetadata("pdf-to-excel");
 
 export default function Page() {
   return (

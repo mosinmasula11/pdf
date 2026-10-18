@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
 import { ImageCompressorTool } from "@/components/tools/ImageCompressorTool";
+import { createToolMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Compress Image",
-  description: "Reduce JPG, PNG and WebP files locally in your browser with easy quality controls.",
-};
+export const metadata: Metadata = createToolMetadata("compress-image");
 
 export default function Page() {
   return (

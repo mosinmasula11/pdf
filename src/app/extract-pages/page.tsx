@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
 import { ExtractPagesTool } from "@/components/tools/ExtractPagesTool";
+import { createToolMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Extract Pages from PDF",
-  description: "Extract specific pages from your PDF into a new document or separate PDF files.",
-};
+export const metadata: Metadata = createToolMetadata("extract-pages");
 
 export default function Page() {
   return (

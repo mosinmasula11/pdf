@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
 import { JpgToPdfTool } from "@/components/tools/JpgToPdfTool";
+import { createToolMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "JPG to PDF",
-  description: "Convert JPG, PNG and other image files into a PDF document in your browser.",
-};
+export const metadata: Metadata = createToolMetadata("jpg-to-pdf");
 
 export default function Page() {
   return (

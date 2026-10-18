@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
 import { PdfToPdfaTool } from "@/components/tools/PdfToPdfaTool";
+import { createToolMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Convert PDF to PDF/A Online",
-  description: "Conform your PDF documents to PDF/A ISO archiving standards for long-term preservation.",
-};
+export const metadata: Metadata = createToolMetadata("convert-pdf-to-pdfa");
 
 export default function Page() {
   return (

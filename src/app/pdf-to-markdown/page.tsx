@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
 import { PdfToMarkdownTool } from "@/components/tools/PdfToMarkdownTool";
+import { createToolMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "PDF to Markdown Converter Online",
-  description: "Convert structured PDF documents into clean GitHub-flavored Markdown (.md) with headings and lists.",
-};
+export const metadata: Metadata = createToolMetadata("pdf-to-markdown");
 
 export default function Page() {
   return (

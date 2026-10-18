@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
 import { ScanPdfTool } from "@/components/tools/ScanPdfTool";
+import { createToolMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Scan to PDF",
-  description: "Scan documents using your device camera or uploaded photos and convert them into organized PDF files.",
-};
+export const metadata: Metadata = createToolMetadata("scan-pdf");
 
 export default function Page() {
   return (

@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
 import { CropPdfTool } from "@/components/tools/CropPdfTool";
+import { createToolMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Crop PDF Online",
-  description: "Trim margins and crop PDF pages visually in your browser with precise dimensions.",
-};
+export const metadata: Metadata = createToolMetadata("crop-pdf");
 
 export default function Page() {
   return (

@@ -1,8 +1,25 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowRight, Scissors, Search, Shield, Sparkles, Zap } from "lucide-react";
 import { ToolGridCard } from "@/components/tools/ToolGridCard";
 import { availableTools, featuredTools } from "@/lib/tool-registry";
+import { siteConfig } from "@/lib/site-config";
+
+export const metadata: Metadata = {
+  title: "Free Online PDF, Image & Utility Tools (100% Private, No Uploads)",
+  description:
+    "Compress, convert, merge, split, edit and sign PDF files and resize images in your browser with 100% privacy. Zero server uploads, no limits, and completely free.",
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    title: "MSYN Tools - Free Online PDF, Image & Utility Tools",
+    description:
+      "All-in-one private file tools. Merge, split, compress, convert, edit, and sign PDFs & optimize images locally on your device with 100% privacy and zero uploads.",
+    url: siteConfig.url,
+  },
+};
 
 export default function HomePage() {
   const toolsByCategory = availableTools.reduce<Record<string, typeof availableTools>>((groups, tool) => {

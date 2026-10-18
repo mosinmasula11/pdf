@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
 import { MergePdfTool } from "@/components/tools/MergePdfTool";
+import { createToolMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Merge PDF",
-  description: "Merge multiple PDF files into one document without leaving your browser.",
-};
+export const metadata: Metadata = createToolMetadata("merge-pdf");
 
 export default function Page() {
   return (

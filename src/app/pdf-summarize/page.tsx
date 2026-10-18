@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
 import { PdfSummarizerTool } from "@/components/tools/PdfSummarizerTool";
+import { createToolMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "AI PDF Summarizer Online",
-  description: "Summarize long PDF documents into key takeaways, bullet points, and executive summaries instantly.",
-};
+export const metadata: Metadata = createToolMetadata("pdf-summarize");
 
 export default function Page() {
   return (

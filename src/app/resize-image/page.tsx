@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
 import { ResizeImageTool } from "@/components/tools/ResizeImageTool";
+import { createToolMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Resize Image",
-  description: "Resize JPG, PNG and WebP images in the browser without uploading your files.",
-};
+export const metadata: Metadata = createToolMetadata("resize-image");
 
 export default function Page() {
   return (

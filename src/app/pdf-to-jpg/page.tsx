@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
 import { PdfToJpgTool } from "@/components/tools/PdfToJpgTool";
+import { createToolMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "PDF to JPG",
-  description: "Convert PDF pages to JPG images and download them as a ZIP archive.",
-};
+export const metadata: Metadata = createToolMetadata("pdf-to-jpg");
 
 export default function Page() {
   return (

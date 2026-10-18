@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
 import { WordCounterTool } from "@/components/tools/WordCounterTool";
+import { createToolMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Word Counter",
-  description: "Count words, characters and paragraph structure instantly in the browser.",
-};
+export const metadata: Metadata = createToolMetadata("word-counter");
 
 export default function Page() {
   return (

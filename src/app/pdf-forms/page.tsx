@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
 import { PdfFormsTool } from "@/components/tools/PdfFormsTool";
+import { createToolMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Fill PDF Forms Online",
-  description: "Fill interactive PDF forms, check boxes, select dropdowns, and download completed documents.",
-};
+export const metadata: Metadata = createToolMetadata("pdf-forms");
 
 export default function Page() {
   return (

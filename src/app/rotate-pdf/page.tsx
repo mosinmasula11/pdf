@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
 import { RotatePdfTool } from "@/components/tools/RotatePdfTool";
+import { createToolMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Rotate PDF",
-  description: "Rotate all pages in a PDF to a chosen angle in the browser.",
-};
+export const metadata: Metadata = createToolMetadata("rotate-pdf");
 
 export default function Page() {
   return (

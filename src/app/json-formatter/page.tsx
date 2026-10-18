@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
 import { JsonFormatterTool } from "@/components/tools/JsonFormatterTool";
+import { createToolMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "JSON Formatter",
-  description: "Format, validate and minify JSON data locally in the browser.",
-};
+export const metadata: Metadata = createToolMetadata("json-formatter");
 
 export default function Page() {
   return (

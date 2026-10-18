@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
 import { HtmlToPdfTool } from "@/components/tools/HtmlToPdfTool";
+import { createToolMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "HTML to PDF Converter Online",
-  description: "Convert HTML files, code snippets or webpages into high-resolution PDF documents.",
-};
+export const metadata: Metadata = createToolMetadata("html-to-pdf");
 
 export default function Page() {
   return (

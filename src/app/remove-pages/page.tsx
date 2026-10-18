@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
 import { RemovePagesTool } from "@/components/tools/RemovePagesTool";
+import { createToolMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Remove Pages from PDF",
-  description: "Delete specific pages from your PDF document online without uploading to servers.",
-};
+export const metadata: Metadata = createToolMetadata("remove-pages");
 
 export default function Page() {
   return (

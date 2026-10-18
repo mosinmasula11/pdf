@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
 import { ResizeImageToCustomKbTool } from "@/components/tools/ResizeImageToCustomKbTool";
+import { createToolMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Resize Image to Custom KB",
-  description: "Reduce any image to a precise file size such as 20KB, 100KB or 500KB in the browser.",
-};
+export const metadata: Metadata = createToolMetadata("resize-image-to-custom-kb");
 
 export default function Page() {
   return (

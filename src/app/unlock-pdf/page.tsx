@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
 import { UnlockPdfTool } from "@/components/tools/UnlockPdfTool";
+import { createToolMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Unlock PDF Online",
-  description: "Remove PDF passwords, security locks, and printing/copying restrictions instantly.",
-};
+export const metadata: Metadata = createToolMetadata("unlock-pdf");
 
 export default function Page() {
   return (

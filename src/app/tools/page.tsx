@@ -3,8 +3,20 @@ import { ToolGridCard } from "@/components/tools/ToolGridCard";
 import { availableTools } from "@/lib/tool-registry";
 
 export const metadata: Metadata = {
-  title: "All Tools",
-  description: "Browse all PDF, image and utility tools available on MSYN Tools.",
+  title: "All Online PDF, Image & Utility Tools Directory | Free & Private",
+  description:
+    "Browse all 35+ free browser-based PDF, image and utility tools. Merge, compress, convert, edit, sign PDFs and resize images with 100% privacy and zero server uploads.",
+  alternates: {
+    canonical: "/tools",
+  },
+  keywords: [
+    "all pdf tools",
+    "pdf tool directory",
+    "online pdf suite",
+    "free image utilities",
+    "browser document tools",
+    "free pdf editor",
+  ],
 };
 
 export default function ToolsPage() {

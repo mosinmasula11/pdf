@@ -4,8 +4,11 @@ import { Mail, Globe, MessageSquare, ShieldCheck, ExternalLink, HelpCircle } fro
 import { siteConfig } from "@/lib/site-config";
 
 export const metadata: Metadata = {
-  title: "Contact Us",
+  title: "Contact Us | Support & Inquiries",
   description: `Contact the ${siteConfig.brandName} team for support, technical questions, or general inquiries at support@msyn.in and tech.msyn@gmail.com.`,
+  alternates: {
+    canonical: "/contact",
+  },
 };
 
 export default function ContactPage() {

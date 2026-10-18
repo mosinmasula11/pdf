@@ -6,6 +6,8 @@ import { usePathname } from "next/navigation";
 import { toolRegistry } from "@/lib/tool-registry";
 import { siteConfig } from "@/lib/site-config";
 
+import { getToolStructuredData } from "@/lib/seo";
+
 const categoryPaths = {
   "PDF Tools": "/pdf-tools",
   "Image Tools": "/image-tools",
@@ -18,62 +20,10 @@ export function ToolBreadcrumb() {
 
   if (!tool) return null;
 
-  const breadcrumbStructuredData = {
-    "@context": "https://schema.org",
-    "@type": "BreadcrumbList",
-    itemListElement: [
-      {
-        "@type": "ListItem",
-        position: 1,
-        name: "Home",
-        item: siteConfig.url,
-      },
-      {
-        "@type": "ListItem",
-        position: 2,
-        name: tool.category,
-        item: `${siteConfig.url}${categoryPaths[tool.category]}`,
-      },
-      {
-        "@type": "ListItem",
-        position: 3,
-        name: tool.name,
-        item: `${siteConfig.url}${tool.path}`,
-      },
-    ],
-  };
-
-  const toolStructuredData = {
-    "@context": "https://schema.org",
-    "@type": "WebApplication",
-    name: `${tool.name} - ${siteConfig.brandName}`,
-    description: tool.description,
-    url: `${siteConfig.url}${tool.path}`,
-    applicationCategory: "UtilitiesApplication",
-    applicationSubCategory: tool.subcategory || tool.category,
-    operatingSystem: "All (Windows, Mac, Linux, iOS, Android)",
-    browserRequirements: "Requires HTML5 & WebAssembly Support",
-    offers: {
-      "@type": "Offer",
-      price: "0",
-      priceCurrency: "USD",
-      availability: "https://schema.org/InStock",
-    },
-    aggregateRating: {
-      "@type": "AggregateRating",
-      ratingValue: "4.9",
-      ratingCount: "2840",
-      bestRating: "5",
-      worstRating: "1",
-    },
-  };
+  const toolStructuredData = getToolStructuredData(tool);
 
   return (
     <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbStructuredData) }}
-      />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(toolStructuredData) }}

@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
 import { RedactPdfTool } from "@/components/tools/RedactPdfTool";
+import { createToolMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Redact PDF Online",
-  description: "Permanently blackout sensitive text, personal info, and private graphics in your PDF documents.",
-};
+export const metadata: Metadata = createToolMetadata("redact-pdf");
 
 export default function Page() {
   return (

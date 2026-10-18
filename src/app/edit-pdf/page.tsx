@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
 import { EditPdfTool } from "@/components/tools/EditPdfTool";
+import { createToolMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Edit PDF Online",
-  description: "Annotate, draw, highlight and add custom text to your PDF documents directly in your browser.",
-};
+export const metadata: Metadata = createToolMetadata("edit-pdf");
 
 export default function Page() {
   return (

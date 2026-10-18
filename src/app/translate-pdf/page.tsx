@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
 import { TranslatePdfTool } from "@/components/tools/TranslatePdfTool";
+import { createToolMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Translate PDF Online",
-  description: "Translate PDF documents to Spanish, French, German, Hindi, Chinese and other languages.",
-};
+export const metadata: Metadata = createToolMetadata("translate-pdf");
 
 export default function Page() {
   return (

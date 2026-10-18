@@ -4,9 +4,12 @@ import { FileCheck, Shield, AlertTriangle, Scale, HelpCircle } from "lucide-reac
 import { siteConfig } from "@/lib/site-config";
 
 export const metadata: Metadata = {
-  title: "Terms of Service",
+  title: "Terms of Service | User Agreement & Guidelines",
   description:
     "Terms of Service and User Agreement for MSYN Tools. Clear guidelines on file ownership, acceptable use, privacy, and service terms.",
+  alternates: {
+    canonical: "/terms",
+  },
 };
 
 export default function TermsPage() {

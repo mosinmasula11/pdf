@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
 import { AddWatermarkTool } from "@/components/tools/AddWatermarkTool";
+import { createToolMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Add Watermark to PDF Online",
-  description: "Protect and brand your PDF documents with custom text or image watermarks.",
-};
+export const metadata: Metadata = createToolMetadata("add-watermark");
 
 export default function Page() {
   return (

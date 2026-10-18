@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
 import { PdfToPowerpointTool } from "@/components/tools/PdfToPowerpointTool";
+import { createToolMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "PDF to PowerPoint Converter Online",
-  description: "Convert PDF documents into PowerPoint (.pptx) slides with high fidelity in your browser.",
-};
+export const metadata: Metadata = createToolMetadata("pdf-to-powerpoint");
 
 export default function Page() {
   return (

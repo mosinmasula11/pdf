@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
 import { PdfToWordTool } from "@/components/tools/PdfToWordTool";
+import { createToolMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "PDF to Word Converter Online",
-  description: "Convert PDF documents into fully editable Microsoft Word (.docx) files without uploading to servers.",
-};
+export const metadata: Metadata = createToolMetadata("pdf-to-word");
 
 export default function Page() {
   return (

@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
 import { AddPageNumbersTool } from "@/components/tools/AddPageNumbersTool";
+import { createToolMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Add Page Numbers to PDF Online",
-  description: "Insert customizable page numbers, headers, and footers into your PDF documents.",
-};
+export const metadata: Metadata = createToolMetadata("add-page-numbers");
 
 export default function Page() {
   return (

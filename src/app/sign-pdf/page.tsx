@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
 import { SignPdfTool } from "@/components/tools/SignPdfTool";
+import { createToolMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Sign PDF Online",
-  description: "Create your electronic signature and stamp it securely onto any page of your PDF documents.",
-};
+export const metadata: Metadata = createToolMetadata("sign-pdf");
 
 export default function Page() {
   return (

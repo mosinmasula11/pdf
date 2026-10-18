@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
 import { ExcelToPdfTool } from "@/components/tools/ExcelToPdfTool";
+import { createToolMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Excel to PDF Converter Online",
-  description: "Convert Excel spreadsheets (.xlsx, .csv, .tsv) into clean, organized PDF documents.",
-};
+export const metadata: Metadata = createToolMetadata("excel-to-pdf");
 
 export default function Page() {
   return (
