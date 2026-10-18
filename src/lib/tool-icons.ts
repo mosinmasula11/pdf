@@ -1,11 +1,13 @@
 import {
   Archive,
+  Binary,
   Braces,
   Camera,
   Code2,
   Crop,
   Edit3,
   EyeOff,
+  FileCheck,
   FileCode,
   FileImage,
   FileOutput,
@@ -17,6 +19,7 @@ import {
   Hash,
   ImageDown,
   Images,
+  KeyRound,
   Languages,
   LayoutGrid,
   Lock,
@@ -24,13 +27,16 @@ import {
   Minimize2,
   PenSquare,
   Presentation,
+  QrCode,
   RotateCw,
   ScanText,
   Scissors,
   Signature,
   Sparkles,
   Stamp,
+  Tags,
   Trash2,
+  Type,
   Unlock,
   UserRound,
   Wrench,
@@ -72,6 +78,7 @@ export const toolIcons: Record<string, LucideIcon> = {
   "crop-pdf": Crop,
   "edit-pdf": Edit3,
   "pdf-forms": FormInput,
+  "flatten-pdf": FileCheck,
 
   // PDF Security
   "unlock-pdf": Unlock,
@@ -79,6 +86,7 @@ export const toolIcons: Record<string, LucideIcon> = {
   "sign-pdf": Signature,
   "redact-pdf": EyeOff,
   "compare-pdf": GitCompare,
+  "pdf-metadata-editor": Tags,
 
   // PDF Intelligence
   "pdf-summarize": Sparkles,
@@ -91,10 +99,15 @@ export const toolIcons: Record<string, LucideIcon> = {
   "resize-image": Maximize,
   "pass-photo-maker": UserRound,
   "signature-resizer": Signature,
+  "webp-to-jpg": FileImage,
 
   // Utilities
   "word-counter": FileText,
   "json-formatter": Braces,
+  "qr-code-generator": QrCode,
+  "case-converter": Type,
+  "base64-converter": Binary,
+  "password-generator": KeyRound,
 };
 
 export function getToolIcon(id: string): LucideIcon {

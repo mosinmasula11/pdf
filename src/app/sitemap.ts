@@ -18,6 +18,9 @@ const highPriorityToolPaths = new Set([
   "/resize-image",
   "/resize-image-to-custom-kb",
   "/passport-photo-maker",
+  "/webp-to-jpg",
+  "/qr-code-generator",
+  "/password-generator",
 ]);
 
 const categoryPaths = new Set([

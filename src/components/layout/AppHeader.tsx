@@ -32,11 +32,11 @@ const toolMenus = [
       },
       {
         title: "Edit PDF",
-        toolIds: ["rotate-pdf", "add-page-numbers", "add-watermark", "crop-pdf", "edit-pdf", "pdf-forms"],
+        toolIds: ["rotate-pdf", "add-page-numbers", "add-watermark", "crop-pdf", "edit-pdf", "pdf-forms", "flatten-pdf"],
       },
       {
         title: "PDF Security",
-        toolIds: ["unlock-pdf", "protect-pdf", "sign-pdf", "redact-pdf", "compare-pdf"],
+        toolIds: ["unlock-pdf", "protect-pdf", "sign-pdf", "redact-pdf", "compare-pdf", "pdf-metadata-editor"],
       },
       {
         title: "PDF Intelligence",
@@ -48,7 +48,7 @@ const toolMenus = [
     label: "All image tools",
     href: "/image-tools",
     groups: [
-      { title: "Resize & optimize", toolIds: ["compress-image", "resize-image", "resize-image-to-custom-kb"] },
+      { title: "Resize & optimize", toolIds: ["compress-image", "resize-image", "resize-image-to-custom-kb", "webp-to-jpg"] },
       { title: "Photo tools", toolIds: ["pass-photo-maker", "signature-resizer"] },
     ],
   },
@@ -56,8 +56,8 @@ const toolMenus = [
     label: "All utility tools",
     href: "/utility-tools",
     groups: [
-      { title: "Text tools", toolIds: ["word-counter"] },
-      { title: "Developer tools", toolIds: ["json-formatter"] },
+      { title: "Text tools", toolIds: ["word-counter", "case-converter"] },
+      { title: "Developer & Security", toolIds: ["json-formatter", "base64-converter", "qr-code-generator", "password-generator"] },
     ],
   },
 ];
