@@ -2,18 +2,20 @@ import type { Metadata } from "next";
 import { CategoryLandingPage } from "@/components/categories/CategoryLandingPage";
 
 export const metadata: Metadata = {
-  title: "Free Online Image Tools - Compress, Resize & Passport Photos",
+  title: "Free Online Image Tools - Convert, Compress, Resize & Favicon Generator",
   description:
-    "Optimize, compress and resize JPG, PNG and WebP images to custom KB sizes (20KB, 50KB, 100KB) for exam forms, passport applications and portals locally in your browser.",
+    "Convert images to ICO, PNG, JPG, WebP, SVG rasterization, compress and resize images to custom KB sizes (20KB, 50KB, 100KB) for forms, portals, and web apps locally in your browser.",
   alternates: {
     canonical: "/image-tools",
   },
   keywords: [
     "image tools",
+    "image to ico converter",
+    "favicon generator",
+    "svg to png converter",
+    "image format converter",
     "compress image online",
     "resize image to custom kb",
-    "resize image to 20kb",
-    "resize image to 50kb",
     "passport photo maker",
     "signature resizer",
   ],

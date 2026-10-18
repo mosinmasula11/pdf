@@ -88,9 +88,10 @@ export function AppFooter() {
             </h3>
             <ul className="space-y-1 text-[11px] text-slate-400 sm:space-y-2 sm:text-xs">
               <li><Link href="/image-tools" className="transition hover:text-white">All Image Tools</Link></li>
-              <li><Link href="/remove-background" className="transition hover:text-white">Remove BG</Link></li>
+              <li><Link href="/image-to-ico" className="transition hover:text-white">Image to ICO</Link></li>
+              <li><Link href="/svg-to-png" className="transition hover:text-white">SVG to PNG</Link></li>
+              <li><Link href="/image-converter" className="transition hover:text-white">Image Converter</Link></li>
               <li><Link href="/compress-image" className="transition hover:text-white">Compress Image</Link></li>
-              <li><Link href="/resize-image" className="transition hover:text-white">Resize Image</Link></li>
               <li><Link href="/webp-to-jpg" className="transition hover:text-white">WebP to JPG</Link></li>
             </ul>
           </div>
@@ -102,9 +103,11 @@ export function AppFooter() {
             </h3>
             <ul className="space-y-1 text-[11px] text-slate-400 sm:space-y-2 sm:text-xs">
               <li><Link href="/utility-tools" className="transition hover:text-white">All Utilities</Link></li>
+              <li><Link href="/jwt-debugger" className="transition hover:text-white">JWT Debugger</Link></li>
+              <li><Link href="/epoch-converter" className="transition hover:text-white">Unix Epoch</Link></li>
+              <li><Link href="/url-converter" className="transition hover:text-white">URL Encoder</Link></li>
               <li><Link href="/api-key-generator" className="transition hover:text-white">API Key Gen</Link></li>
               <li><Link href="/qr-code-generator" className="transition hover:text-white">QR Code</Link></li>
-              <li><Link href="/password-generator" className="transition hover:text-white">Password Gen</Link></li>
               <li><Link href="/api-client" className="transition hover:text-white">REST API Client</Link></li>
             </ul>
           </div>

@@ -2,19 +2,22 @@ import type { Metadata } from "next";
 import { CategoryLandingPage } from "@/components/categories/CategoryLandingPage";
 
 export const metadata: Metadata = {
-  title: "Free Everyday Utility Tools - Word Counter & JSON Formatter",
+  title: "Free Online Developer & Utility Tools - JWT Debugger, Epoch & API Tools",
   description:
-    "Fast, private online utility helpers: count words, characters, and reading time in real time, or format, validate, and minify JSON directly in your browser.",
+    "Fast, private online developer utilities: private JWT debugger, Unix epoch converter, URL encoder & query param editor, REST API client, API key generator, QR codes, and JSON formatter.",
   alternates: {
     canonical: "/utility-tools",
   },
   keywords: [
     "utility tools",
-    "word counter online",
-    "character counter",
-    "reading time calculator",
+    "jwt debugger online",
+    "unix timestamp converter",
+    "epoch converter",
+    "url encoder decoder",
+    "api client",
+    "api key generator",
+    "qr code generator",
     "json formatter",
-    "json validator",
     "developer tools",
   ],
 };

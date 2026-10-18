@@ -48,16 +48,18 @@ const toolMenus = [
     label: "All image tools",
     href: "/image-tools",
     groups: [
-      { title: "Resize & optimize", toolIds: ["compress-image", "resize-image", "resize-image-to-custom-kb", "webp-to-jpg"] },
-      { title: "Photo tools", toolIds: ["remove-background", "pass-photo-maker", "signature-resizer"] },
+      { title: "Resize & optimize", toolIds: ["compress-image", "resize-image", "resize-image-to-custom-kb"] },
+      { title: "Convert image", toolIds: ["image-to-ico", "svg-to-png", "image-converter", "webp-to-jpg"] },
+      { title: "Photo tools", toolIds: ["pass-photo-maker", "signature-resizer"] },
     ],
   },
   {
     label: "All utility tools",
     href: "/utility-tools",
     groups: [
+      { title: "Developer tools", toolIds: ["jwt-debugger", "api-client", "epoch-converter", "url-converter", "json-formatter"] },
+      { title: "Security & Keys", toolIds: ["api-key-generator", "password-generator", "qr-code-generator", "base64-converter"] },
       { title: "Text tools", toolIds: ["word-counter", "case-converter"] },
-      { title: "Developer & Security", toolIds: ["api-client", "api-key-generator", "password-generator", "qr-code-generator", "json-formatter", "base64-converter"] },
     ],
   },
 ];
