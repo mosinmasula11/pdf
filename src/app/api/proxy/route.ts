@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { API_METHODS, API_TIMEOUT_MS, readApiText } from "@/lib/api-request";
 import { callPublicApi } from "@/lib/api-proxy";
 
-export const runtime = "nodejs";
 let active = 0, windowStart = 0, calls = 0;
 function failure(message: string, httpStatus: number) {
   return NextResponse.json({ ok: false, status: 0, statusText: "Request Error", headers: {}, data: message,
