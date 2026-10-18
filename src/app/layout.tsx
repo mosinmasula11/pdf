@@ -98,6 +98,9 @@ export const metadata: Metadata = {
       "Free browser-based PDF tools: Merge, Split, Compress, Convert, Edit, Sign & Protect PDFs locally with zero server uploads.",
     images: ["/og-image.png"],
   },
+  other: {
+    "google-adsense-account": "ca-pub-6265353018392703",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -180,11 +183,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
       <head>
-        <script
-          async
-          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6265353018392703"
-          crossOrigin="anonymous"
-        />
+        <meta name="google-adsense-account" content="ca-pub-6265353018392703" />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(globalStructuredData) }}
