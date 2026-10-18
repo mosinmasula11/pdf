@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertCircle,
   Bookmark,
@@ -20,6 +20,7 @@ import {
   X,
 } from "lucide-react";
 import { formatBytes, downloadBlob } from "@/lib/browser-utils";
+import { apiParams, apiSnippet, API_TIMEOUT_MS, compileApiRequest, readApiText, sanitizeApiRequest } from "@/lib/api-request";
 
 type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "HEAD" | "OPTIONS";
 
@@ -46,6 +47,7 @@ interface SavedRequest {
   apiKeyValue: string;
   apiKeyPlacement: "header" | "query";
   bodyType: "none" | "json" | "form-data" | "urlencoded" | "raw";
+  bodyRaw: string;
   bodyJson: string;
   bodyFormData: KeyValuePair[];
   timestamp: number;
@@ -147,7 +149,8 @@ export function ApiClientTool() {
   // Response Viewer Tabs
   const [activeRespTab, setActiveRespTab] = useState<"pretty" | "raw" | "preview" | "headers">("pretty");
   const [respCopied, setRespCopied] = useState(false);
-  const [respSearchQuery, setRespSearchQuery] = useState("");
+  const [storageNotice, setStorageNotice] = useState("");
+  const requestController = useRef<AbortController | null>(null);
 
   // Code Snippet Target Language
   const [codeLang, setCodeLang] = useState<"curl" | "js" | "node" | "python" | "php" | "go">("curl");
@@ -160,15 +163,23 @@ export function ApiClientTool() {
   const [saveName, setSaveName] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
-  // Load from local storage
-  useEffect(() => {
-    try {
-      const storedHist = localStorage.getItem("msyn_api_client_history");
-      if (storedHist) setHistory(JSON.parse(storedHist));
+  const persistRequests = (key: string, items: SavedRequest[]) => {
+    try { localStorage.setItem(key, JSON.stringify(items)); }
+    catch { setStorageNotice("Browser storage is unavailable. Requests will only be kept for this visit."); }
+  };
 
-      const storedSaved = localStorage.getItem("msyn_api_client_saved");
-      if (storedSaved) setSavedRequests(JSON.parse(storedSaved));
-    } catch {}
+  useEffect(() => {
+    for (const [key, setter] of [
+      ["msyn_api_client_history", setHistory], ["msyn_api_client_saved", setSavedRequests],
+    ] as const) {
+      try {
+        const parsed: unknown = JSON.parse(localStorage.getItem(key) || "[]");
+        const items = Array.isArray(parsed) ? parsed.filter(item => item && typeof item.url === "string" && item.method in METHOD_COLORS).map(item => sanitizeApiRequest(item as SavedRequest)) : [];
+        setter(items);
+        localStorage.setItem(key, JSON.stringify(items));
+      } catch { setStorageNotice("Some saved requests could not be loaded. Browser storage may be unavailable."); }
+    }
+    return () => { requestController.current?.abort(); };
   }, []);
 
   // Update URL when params change
@@ -188,24 +199,7 @@ export function ApiClientTool() {
   // Sync params table when user edits the URL text directly
   const handleUrlChange = (newUrl: string) => {
     setUrl(newUrl);
-    try {
-      if (newUrl.includes("?")) {
-        const parsed = new URL(newUrl.includes("://") ? newUrl : `https://${newUrl}`);
-        const newParams: KeyValuePair[] = [];
-        let counter = 1;
-        parsed.searchParams.forEach((val, k) => {
-          newParams.push({
-            id: String(counter++),
-            key: k,
-            value: val,
-            enabled: true,
-          });
-        });
-        if (newParams.length > 0) {
-          setParams(newParams);
-        }
-      }
-    } catch {}
+    setParams(apiParams(newUrl));
   };
 
   // Add / Delete Key-Value Rows
@@ -250,141 +244,51 @@ export function ApiClientTool() {
     }
   };
 
-  // Build headers map
-  const getCompiledHeaders = (): Record<string, string> => {
-    const res: Record<string, string> = {};
+  const currentConfig = () => ({ method, url, headers, authType, bearerToken, basicUser, basicPass,
+    apiKeyName, apiKeyValue, apiKeyPlacement, bodyType, bodyJson, bodyRaw, bodyFormData });
 
-    // Standard headers
-    headers.forEach((h) => {
-      if (h.enabled && h.key.trim()) {
-        res[h.key.trim()] = h.value;
-      }
-    });
-
-    // Auth headers
-    if (authType === "bearer" && bearerToken.trim()) {
-      res["Authorization"] = `Bearer ${bearerToken.trim()}`;
-    } else if (authType === "basic" && (basicUser || basicPass)) {
-      res["Authorization"] = `Basic ${btoa(`${basicUser}:${basicPass}`)}`;
-    } else if (authType === "apikey" && apiKeyPlacement === "header" && apiKeyName.trim()) {
-      res[apiKeyName.trim()] = apiKeyValue;
-    }
-
-    // Body content type
-    if (bodyType === "json" && !res["Content-Type"]) {
-      res["Content-Type"] = "application/json";
-    } else if (bodyType === "urlencoded" && !res["Content-Type"]) {
-      res["Content-Type"] = "application/x-www-form-urlencoded";
-    }
-
-    return res;
-  };
-
-  // Send HTTP Request
   const handleSend = async () => {
-    if (!url.trim()) return;
+    if (!url.trim() || requestController.current) return;
+    const controller = new AbortController();
+    requestController.current = controller;
+    const signal = AbortSignal.any([controller.signal, AbortSignal.timeout(API_TIMEOUT_MS)]);
     setLoading(true);
     setResponse(null);
-
-    // Compute final target URL (with query auth if needed)
-    let targetUrl = url.trim();
-    if (authType === "apikey" && apiKeyPlacement === "query" && apiKeyName.trim()) {
-      const sep = targetUrl.includes("?") ? "&" : "?";
-      targetUrl = `${targetUrl}${sep}${encodeURIComponent(apiKeyName)}=${encodeURIComponent(apiKeyValue)}`;
-    }
-
-    // Compute request body
-    let finalBody: any = null;
-    if (!["GET", "HEAD"].includes(method)) {
-      if (bodyType === "json") finalBody = bodyJson;
-      else if (bodyType === "raw") finalBody = bodyRaw;
-      else if (bodyType === "urlencoded") {
-        const u = new URLSearchParams();
-        bodyFormData.forEach((row) => {
-          if (row.enabled && row.key) u.append(row.key, row.value);
-        });
-        finalBody = u.toString();
-      }
-    }
-
-    const compiledHeaders = getCompiledHeaders();
-
+    setJsonError(null);
+    const startTime = performance.now();
     try {
+      const compiled = compileApiRequest(currentConfig());
       if (useProxy) {
-        // Send through Next.js proxy route to bypass browser CORS completely
         const res = await fetch("/api/proxy", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            url: targetUrl,
-            method,
-            headers: compiledHeaders,
-            body: finalBody,
-          }),
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(compiled), signal,
         });
         const json = await res.json();
+        if (typeof json.data !== "string" || !json.headers || typeof json.status !== "number") {
+          throw new Error(json.error || "The proxy returned an invalid response.");
+        }
         setResponse(json);
       } else {
-        // Direct browser fetch
-        const startTime = performance.now();
-        const res = await fetch(targetUrl, {
-          method,
-          headers: compiledHeaders,
-          body: finalBody,
-        });
-        const duration = Math.round(performance.now() - startTime);
-        const text = await res.text();
-        const headerObj: Record<string, string> = {};
-        res.headers.forEach((v, k) => {
-          headerObj[k] = v;
-        });
-
-        setResponse({
-          status: res.status,
-          statusText: res.statusText || (res.ok ? "OK" : "Error"),
-          durationMs: duration,
-          sizeBytes: new TextEncoder().encode(text).length,
-          headers: headerObj,
-          data: text,
-          contentType: res.headers.get("content-type") || "text/plain",
-        });
+        const res = await fetch(compiled.url, { method, headers: compiled.headers, body: compiled.body, signal });
+        const text = await readApiText(res);
+        setResponse({ status: res.status, statusText: res.statusText || (res.ok ? "OK" : "Error"),
+          durationMs: Math.round(performance.now() - startTime), sizeBytes: new TextEncoder().encode(text).length,
+          headers: Object.fromEntries(res.headers), data: text, contentType: res.headers.get("content-type") || "text/plain" });
       }
-
-      // Save to history
-      const histItem: SavedRequest = {
-        id: String(Date.now()),
-        name: `${method} ${targetUrl.slice(0, 35)}...`,
-        method,
-        url: targetUrl,
-        params,
-        headers,
-        authType,
-        bearerToken,
-        basicUser,
-        basicPass,
-        apiKeyName,
-        apiKeyValue,
-        apiKeyPlacement,
-        bodyType,
-        bodyJson,
-        bodyFormData,
-        timestamp: Date.now(),
-      };
-      const updatedHist = [histItem, ...history.filter((h) => h.url !== targetUrl).slice(0, 24)];
-      setHistory(updatedHist);
-      localStorage.setItem("msyn_api_client_history", JSON.stringify(updatedHist));
-    } catch (err: any) {
-      setResponse({
-        status: 0,
-        statusText: "Network Error",
-        durationMs: 0,
-        sizeBytes: 0,
-        headers: {},
-        data: err?.message || "Failed to fetch. Check if URL is accessible or switch on 'CORS Proxy'.",
-        contentType: "text/plain",
-        isError: true,
+      const histItem = sanitizeApiRequest({ ...currentConfig(), params, id: crypto.randomUUID(),
+        name: method + " request", timestamp: Date.now() });
+      setHistory(previous => {
+        const updated = [histItem, ...previous].slice(0, 25);
+        persistRequests("msyn_api_client_history", updated);
+        return updated;
       });
+    } catch (error: unknown) {
+      const message = signal.aborted ? (controller.signal.aborted ? "Request cancelled." : "Request timed out after 30 seconds.")
+        : error instanceof Error ? error.message : "Request failed.";
+      setResponse({ status: 0, statusText: signal.aborted ? "Request stopped" : "Request Error", durationMs: Math.round(performance.now() - startTime),
+        sizeBytes: 0, headers: {}, data: message, contentType: "text/plain", isError: true });
     } finally {
+      if (requestController.current === controller) requestController.current = null;
       setLoading(false);
     }
   };
@@ -404,13 +308,15 @@ export function ApiClientTool() {
     setApiKeyPlacement(item.apiKeyPlacement || "header");
     setBodyType(item.bodyType || "none");
     setBodyJson(item.bodyJson || "");
+    setBodyRaw(item.bodyRaw || "");
+    setJsonError(null);
     setBodyFormData(item.bodyFormData || []);
   };
 
   // Save request to collections
   const handleSaveCollection = () => {
     if (!saveName.trim()) return;
-    const newItem: SavedRequest = {
+    const newItem: SavedRequest = sanitizeApiRequest({
       id: String(Date.now()),
       name: saveName.trim(),
       method,
@@ -426,12 +332,13 @@ export function ApiClientTool() {
       apiKeyPlacement,
       bodyType,
       bodyJson,
+      bodyRaw,
       bodyFormData,
       timestamp: Date.now(),
-    };
+    });
     const updated = [newItem, ...savedRequests];
     setSavedRequests(updated);
-    localStorage.setItem("msyn_api_client_saved", JSON.stringify(updated));
+    persistRequests("msyn_api_client_saved", updated);
     setSaveModalOpen(false);
     setSaveName("");
   };
@@ -445,119 +352,14 @@ export function ApiClientTool() {
 
   const clearHistory = () => {
     setHistory([]);
-    localStorage.removeItem("msyn_api_client_history");
+    persistRequests("msyn_api_client_history", []);
   };
 
-  // Generate Code Snippets
   const generatedCode = useMemo(() => {
-    const compiledHeaders = getCompiledHeaders();
-    let bodyContent: string | null = null;
-    if (!["GET", "HEAD"].includes(method)) {
-      if (bodyType === "json") bodyContent = bodyJson;
-      else if (bodyType === "raw") bodyContent = bodyRaw;
-    }
-
-    switch (codeLang) {
-      case "curl": {
-        let cmd = `curl -X ${method} "${url}"`;
-        Object.entries(compiledHeaders).forEach(([k, v]) => {
-          cmd += ` \\\n  -H "${k}: ${v}"`;
-        });
-        if (bodyContent) {
-          cmd += ` \\\n  -d '${bodyContent.replace(/'/g, "\\'")}'`;
-        }
-        return cmd;
-      }
-      case "js": {
-        return `fetch("${url}", {
-  method: "${method}",
-  headers: ${JSON.stringify(compiledHeaders, null, 2)},
-${bodyContent ? `  body: JSON.stringify(${bodyContent}),\n` : ""}
-})
-  .then((response) => response.json())
-  .then((data) => console.log(data))
-  .catch((error) => console.error(error));`;
-      }
-      case "node": {
-        return `const axios = require('axios');
-
-axios({
-  method: '${method.toLowerCase()}',
-  url: '${url}',
-  headers: ${JSON.stringify(compiledHeaders, null, 2)},
-${bodyContent ? `  data: ${bodyContent},\n` : ""}
-})
-  .then(response => console.log(response.data))
-  .catch(error => console.error(error));`;
-      }
-      case "python": {
-        return `import requests
-
-url = "${url}"
-headers = ${JSON.stringify(compiledHeaders, null, 2)}
-${bodyContent ? `data = ${bodyContent}\n` : ""}
-response = requests.${method.toLowerCase()}(
-    url,
-    headers=headers,
-${bodyContent ? `    json=data\n` : ""}
-)
-
-print(response.status_code)
-print(response.text)`;
-      }
-      case "php": {
-        return `<?php
-$curl = curl_init();
-
-curl_setopt_array($curl, array(
-  CURLOPT_URL => '${url}',
-  CURLOPT_RETURNTRANSFER => true,
-  CURLOPT_CUSTOMREQUEST => '${method}',
-${bodyContent ? `  CURLOPT_POSTFIELDS => '${bodyContent}',\n` : ""}
-  CURLOPT_HTTPHEADER => array(
-${Object.entries(compiledHeaders)
-  .map(([k, v]) => `    '${k}: ${v}',`)
-  .join("\n")}
-  ),
-));
-
-$response = curl_exec($curl);
-curl_close($curl);
-echo $response;`;
-      }
-      case "go": {
-        return `package main
-
-import (
-	"fmt"
-	"net/http"
-	"io"
-${bodyContent ? '\t"strings"\n' : ""}
-)
-
-func main() {
-	client := &http.Client{}
-${bodyContent ? `\treq, err := http.NewRequest("${method}", "${url}", strings.NewReader(\`${bodyContent}\`))\n` : `\treq, err := http.NewRequest("${method}", "${url}", nil)\n`}
-	if err != nil {
-		panic(err)
-	}
-
-${Object.entries(compiledHeaders)
-  .map(([k, v]) => `\treq.Header.Set("${k}", "${v}")`)
-  .join("\n")}
-
-	resp, err := client.Do(req)
-	if err != nil {
-		panic(err)
-	}
-	defer resp.Body.Close()
-
-	bodyText, _ := io.ReadAll(resp.Body)
-	fmt.Printf("%s\\n", bodyText)
-}`;
-      }
-    }
-  }, [method, url, headers, authType, bearerToken, basicUser, basicPass, apiKeyName, apiKeyValue, apiKeyPlacement, bodyType, bodyJson, bodyRaw, codeLang]);
+    try { return apiSnippet({ method, url, headers, authType, bearerToken, basicUser, basicPass,
+      apiKeyName, apiKeyValue, apiKeyPlacement, bodyType, bodyJson, bodyRaw, bodyFormData }, codeLang); }
+    catch (error) { return "Request needs attention: " + (error instanceof Error ? error.message : "Invalid request settings."); }
+  }, [method, url, headers, authType, bearerToken, basicUser, basicPass, apiKeyName, apiKeyValue, apiKeyPlacement, bodyType, bodyJson, bodyRaw, bodyFormData, codeLang]);
 
   // Pretty JSON format for response display
   const formattedResponseJson = useMemo(() => {
@@ -698,6 +500,9 @@ ${Object.entries(compiledHeaders)
                   if (preset) {
                     setMethod(preset.method);
                     handleUrlChange(preset.url);
+                    setAuthType("none");
+                    setBodyType(preset.body ? "json" : "none");
+                    setJsonError(null);
                     if (preset.body) {
                       setBodyType("json");
                       setBodyJson(preset.body);
@@ -737,6 +542,8 @@ ${Object.entries(compiledHeaders)
             </div>
           </div>
 
+          <p className="text-xs text-slate-500" role="note">Requests time out after 30 seconds. The proxy accepts public HTTP(S) endpoints only. Use direct mode for local APIs. History and collections save request bodies locally; authentication values and custom header values are cleared when saved.</p>
+          {storageNotice && <p role="status" className="text-xs text-amber-700">{storageNotice}</p>}
           {/* URL & Method Input Bar */}
           <div className="flex flex-col gap-2 sm:flex-row">
             <select
@@ -784,6 +591,7 @@ ${Object.entries(compiledHeaders)
                 </>
               )}
             </button>
+            {loading && <button type="button" onClick={() => requestController.current?.abort()} className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold">Cancel request</button>}
           </div>
         </div>
 
@@ -1287,9 +1095,10 @@ ${Object.entries(compiledHeaders)
                 {activeRespTab === "preview" && (
                   <div className="rounded-xl border border-slate-200 overflow-hidden bg-white">
                     <iframe
-                      srcDoc={response.data}
+                      srcDoc={`<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data:; form-action 'none'; base-uri 'none'">${response.data}`}
                       title="Response Preview"
-                      sandbox="allow-same-origin"
+                      sandbox=""
+                      referrerPolicy="no-referrer"
                       className="h-80 w-full"
                     />
                   </div>

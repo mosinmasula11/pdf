@@ -49,7 +49,7 @@ const toolMenus = [
     href: "/image-tools",
     groups: [
       { title: "Resize & optimize", toolIds: ["compress-image", "resize-image", "resize-image-to-custom-kb", "webp-to-jpg"] },
-      { title: "Photo tools", toolIds: ["pass-photo-maker", "signature-resizer"] },
+      { title: "Photo tools", toolIds: ["remove-background", "pass-photo-maker", "signature-resizer"] },
     ],
   },
   {

@@ -6,6 +6,7 @@ import {
   Code2,
   Crop,
   Edit3,
+  Eraser,
   EyeOff,
   FileCheck,
   FileCode,
@@ -102,6 +103,7 @@ export const toolIcons: Record<string, LucideIcon> = {
   "pass-photo-maker": UserRound,
   "signature-resizer": Signature,
   "webp-to-jpg": FileImage,
+  "remove-background": Eraser,
 
   // Utilities
   "word-counter": FileText,

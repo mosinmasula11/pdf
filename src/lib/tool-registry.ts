@@ -532,6 +532,18 @@ export const toolRegistry: ToolDefinition[] = [
     metaDescription: "Convert WebP photos and graphics to JPG or PNG with batch zip export and quality control.",
     status: "working",
   },
+  {
+    id: "remove-background",
+    name: "Remove Background",
+    description: "Instantly remove backgrounds from images, logos, product photos, and signatures with transparent PNG export.",
+    category: "Image Tools",
+    subcategory: "Image Optimization",
+    path: "/remove-background",
+    supportedFormats: ["PNG", "JPG", "WEBP"],
+    seoTitle: "Remove Image Background Online | Free Transparent PNG Maker",
+    metaDescription: "Remove background from images locally in your browser. Create transparent PNGs or replace backgrounds with zero file uploads.",
+    status: "working",
+  },
 
   // --- Utilities ---
   {

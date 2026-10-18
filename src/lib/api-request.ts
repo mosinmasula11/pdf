@@ -75,7 +75,8 @@ function redactJson(value: unknown): unknown {
 export function sanitizeApiRequest<T extends ApiRequestConfig & { params: ApiRow[] }>(item: T): T {
   let url = item.url;
   try {
-    const parsed = parseApiUrl(url);
+    const parsed = new URL(url.includes("://") ? url : `https://${url}`);
+    parsed.username = ""; parsed.password = ""; parsed.hash = "";
     for (const key of [...parsed.searchParams.keys()]) {
       if (secretKey.test(key) || (item.authType === "apikey" && key === item.apiKeyName)) parsed.searchParams.set(key, "");
     }
@@ -92,21 +93,25 @@ export function sanitizeApiRequest<T extends ApiRequestConfig & { params: ApiRow
   };
 }
 
-export async function readApiText(response: Response, limit = API_RESPONSE_LIMIT) {
+export async function readApiText(response: Response, limit = API_RESPONSE_LIMIT, signal?: AbortSignal) {
   const reader = response.body?.getReader();
   if (!reader) return "";
   const decoder = new TextDecoder();
   let bytes = 0, text = "";
+  const abort = () => { void reader.cancel().catch(() => {}); };
+  signal?.addEventListener("abort", abort, { once: true });
   try {
     while (true) {
+      signal?.throwIfAborted();
       const chunk = await reader.read();
+      signal?.throwIfAborted();
       if (chunk.done) break;
       bytes += chunk.value.byteLength;
       if (bytes > limit) throw new Error(`Response exceeds the ${Math.round(limit / 1024)} KB limit.`);
       text += decoder.decode(chunk.value, { stream: true });
     }
     return text + decoder.decode();
-  } finally { await reader.cancel().catch(() => {}); }
+  } finally { signal?.removeEventListener("abort", abort); await reader.cancel().catch(() => {}); }
 }
 
 export function apiSnippet(config: ApiRequestConfig, language: string) {

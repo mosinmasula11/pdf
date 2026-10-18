@@ -19,6 +19,7 @@ const highPriorityToolPaths = new Set([
   "/resize-image-to-custom-kb",
   "/passport-photo-maker",
   "/webp-to-jpg",
+  "/remove-background",
   "/qr-code-generator",
   "/password-generator",
   "/api-client",

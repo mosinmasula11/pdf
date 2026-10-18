@@ -88,10 +88,10 @@ export function AppFooter() {
             </h3>
             <ul className="space-y-1 text-[11px] text-slate-400 sm:space-y-2 sm:text-xs">
               <li><Link href="/image-tools" className="transition hover:text-white">All Image Tools</Link></li>
+              <li><Link href="/remove-background" className="transition hover:text-white">Remove BG</Link></li>
               <li><Link href="/compress-image" className="transition hover:text-white">Compress Image</Link></li>
               <li><Link href="/resize-image" className="transition hover:text-white">Resize Image</Link></li>
               <li><Link href="/webp-to-jpg" className="transition hover:text-white">WebP to JPG</Link></li>
-              <li><Link href="/passport-photo-maker" className="transition hover:text-white">Passport Photo</Link></li>
             </ul>
           </div>
 
