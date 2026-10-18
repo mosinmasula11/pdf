@@ -59,7 +59,7 @@ export async function callPublicApi(input: ProxyInput, signal: AbortSignal) {
     const result = await new Promise<{ status: number; statusText: string; headers: Record<string, string>; data: Buffer }>((resolve, reject) => {
       // Pin the validated address, retaining the original Host and TLS hostname.
       const req = (url.protocol === "https:" ? httpsRequest : httpRequest)(url, {
-        method, headers, signal, agent: false, autoSelectFamily: false,
+        method, headers, signal, agent: false,
         lookup: (_hostname, _options, callback) => callback(null, address.address, address.family),
       }, response => {
         const chunks: Buffer[] = [];
