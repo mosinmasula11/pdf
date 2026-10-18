@@ -24,7 +24,10 @@ export const metadata: Metadata = {
   keywords: ["PDF tools", "image compressor", "resize image", "merge PDF", "online file tools"],
   manifest: "/manifest.webmanifest",
   icons: {
-    icon: "/icons/icon-192.png",
+    icon: [
+      { url: "/logo_for_title.ico" },
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+    ],
     apple: "/icons/icon-192.png",
   },
   openGraph: {

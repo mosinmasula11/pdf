@@ -1,24 +1,24 @@
 import type { MetadataRoute } from "next";
+import { siteConfig } from "@/lib/site-config";
+import { toolRegistry } from "@/lib/tool-registry";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://example.com";
   const routes = [
     "",
     "/tools",
-    "/jpg-to-pdf",
-    "/merge-pdf",
-    "/pdf-to-jpg",
-    "/compress-image",
-    "/resize-image-to-custom-kb",
+    "/pdf-tools",
+    "/image-tools",
+    "/utility-tools",
     "/about",
     "/contact",
     "/privacy-policy",
     "/terms",
     "/cookie-policy",
+    ...toolRegistry.map((tool) => tool.path),
   ];
 
   return routes.map((route) => ({
-    url: `${baseUrl}${route}`,
+    url: `${siteConfig.url}${route}`,
     lastModified: new Date(),
     changeFrequency: "weekly",
     priority: route === "" ? 1 : 0.7,

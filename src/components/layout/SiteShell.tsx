@@ -1,11 +1,15 @@
 import { AppHeader } from "@/components/layout/AppHeader";
 import { AppFooter } from "@/components/layout/AppFooter";
+import { ToolBreadcrumb } from "@/components/layout/ToolBreadcrumb";
 
 export function SiteShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
       <AppHeader />
-      <main className="min-h-[calc(100vh-200px)]">{children}</main>
+      <main className="min-h-[calc(100vh-200px)]">
+        <ToolBreadcrumb />
+        {children}
+      </main>
       <AppFooter />
     </div>
   );
