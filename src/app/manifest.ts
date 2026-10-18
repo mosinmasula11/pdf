@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "MSYN Tools",
     short_name: "MSYN Tools",
-    description: "Free browser-based PDF, image and utility tools.",
+    description: "Free PDF, image and utility tools.",
     start_url: "/",
     display: "standalone",
     background_color: "#f8fafc",

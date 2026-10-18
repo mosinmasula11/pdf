@@ -1,16 +1,23 @@
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowRight, FileImage, FileText, Scissors, Search, Shield, Sparkles, Zap } from "lucide-react";
-import { featuredTools, toolRegistry } from "@/lib/tool-registry";
+import { ArrowRight, Scissors, Search, Shield, Sparkles, Zap } from "lucide-react";
+import { ToolGridCard } from "@/components/tools/ToolGridCard";
+import { availableTools, featuredTools } from "@/lib/tool-registry";
 
 export default function HomePage() {
+  const toolsByCategory = availableTools.reduce<Record<string, typeof availableTools>>((groups, tool) => {
+    groups[tool.category] ??= [];
+    groups[tool.category].push(tool);
+    return groups;
+  }, {});
+
   const categories = [
     {
       name: "PDF Tools",
       description: "Convert, merge, split and rotate PDF documents.",
       href: "/pdf-tools",
       image: "/images/categories/pdf-tools.png",
-      count: toolRegistry.filter((tool) => tool.category === "PDF Tools").length,
+      count: availableTools.filter((tool) => tool.category === "PDF Tools").length,
       theme: "from-rose-50 to-orange-50",
     },
     {
@@ -18,7 +25,7 @@ export default function HomePage() {
       description: "Compress and resize images for sharing or upload.",
       href: "/image-tools",
       image: "/images/categories/image-tools.png",
-      count: toolRegistry.filter((tool) => tool.category === "Image Tools").length,
+      count: availableTools.filter((tool) => tool.category === "Image Tools").length,
       theme: "from-sky-50 to-violet-50",
     },
     {
@@ -26,7 +33,7 @@ export default function HomePage() {
       description: "Quick everyday helpers for text and structured data.",
       href: "/utility-tools",
       image: "/images/categories/utility-tools.png",
-      count: toolRegistry.filter((tool) => tool.category === "Utilities").length,
+      count: availableTools.filter((tool) => tool.category === "Utilities").length,
       theme: "from-violet-50 to-fuchsia-50",
     },
   ];
@@ -68,7 +75,7 @@ export default function HomePage() {
           <div className="relative min-h-72 bg-slate-100 sm:min-h-96 lg:min-h-[31rem]">
             <Image
               src="/images/homepage-hero.webp"
-              alt="MSYN Tools helps you manage PDFs and images with private browser-based tools"
+              alt="MSYN Tools helps you manage PDFs and images with private file tools"
               fill
               priority
               sizes="(max-width: 1024px) 100vw, 58vw"
@@ -121,15 +128,9 @@ export default function HomePage() {
           </Link>
         </div>
 
-        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-5">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {featuredTools.map((tool) => (
-            <Link key={tool.id} href={tool.path} className="group rounded-3xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-violet-200 hover:shadow-md">
-              <div className="mb-4 inline-flex rounded-2xl bg-violet-50 p-3 text-violet-600">
-                {tool.category === "PDF Tools" ? <FileText className="h-5 w-5" /> : tool.category === "Image Tools" ? <FileImage className="h-5 w-5" /> : <Zap className="h-5 w-5" />}
-              </div>
-              <h3 className="text-lg font-semibold text-slate-900">{tool.name}</h3>
-              <p className="mt-2 text-sm leading-6 text-slate-600">{tool.description}</p>
-            </Link>
+            <ToolGridCard key={tool.id} tool={tool} />
           ))}
         </div>
       </section>
@@ -169,29 +170,34 @@ export default function HomePage() {
       </section>
 
       <section className="mt-16">
-        <h2 className="text-3xl font-bold text-slate-900">All tools</h2>
-        <div className="mt-6 grid gap-6 lg:grid-cols-3">
-          {Object.entries(
-            toolRegistry.reduce<Record<string, typeof toolRegistry>>((acc, tool) => {
-              acc[tool.category] ??= [];
-              acc[tool.category].push(tool);
-              return acc;
-            }, {}),
-          ).map(([category, tools]) => (
-            <div key={category} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-              <h3 className="mb-4 text-lg font-semibold text-slate-900">{category}</h3>
-              <ul className="space-y-3">
-                {tools.map((tool) => (
-                  <li key={tool.id}>
-                    <Link href={tool.path} className="flex items-center justify-between gap-3 rounded-2xl border border-slate-100 px-3 py-2 text-sm text-slate-700 hover:border-violet-200 hover:bg-violet-50">
-                      <span>{tool.name}</span>
-                      <ArrowRight className="h-4 w-4 text-violet-600" />
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
+        <h2 className="text-3xl font-bold text-slate-900">Available tools</h2>
+        <div className="mt-6 space-y-10">
+          {Object.entries(toolsByCategory).map(([category, tools]) => {
+            const toolsBySubcategory = tools.reduce<Record<string, typeof tools>>((groups, tool) => {
+              const subcategory = tool.subcategory ?? category;
+              groups[subcategory] ??= [];
+              groups[subcategory].push(tool);
+              return groups;
+            }, {});
+
+            return (
+              <section key={category}>
+                <h3 className="mb-5 text-2xl font-bold text-slate-900">{category}</h3>
+                <div className="space-y-7">
+                  {Object.entries(toolsBySubcategory).map(([subcategory, subcategoryTools]) => (
+                    <section key={subcategory}>
+                      <h4 className="mb-3 text-sm font-bold uppercase tracking-[0.14em] text-slate-500">
+                        {subcategory}
+                      </h4>
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                        {subcategoryTools.map((tool) => <ToolGridCard key={tool.id} tool={tool} />)}
+                      </div>
+                    </section>
+                  ))}
+                </div>
+              </section>
+            );
+          })}
         </div>
       </section>
 

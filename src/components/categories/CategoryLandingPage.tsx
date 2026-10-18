@@ -1,7 +1,7 @@
 import Image from "next/image";
-import Link from "next/link";
-import { ArrowRight, ShieldCheck } from "lucide-react";
-import { toolRegistry, type ToolCategory } from "@/lib/tool-registry";
+import { ShieldCheck } from "lucide-react";
+import { ToolGridCard } from "@/components/tools/ToolGridCard";
+import { availableTools, type ToolCategory } from "@/lib/tool-registry";
 
 const accentClasses = {
   rose: "border-rose-200 bg-rose-50 text-rose-700",
@@ -24,7 +24,13 @@ export function CategoryLandingPage({
   image,
   accent,
 }: CategoryLandingPageProps) {
-  const tools = toolRegistry.filter((tool) => tool.category === category);
+  const tools = availableTools.filter((tool) => tool.category === category);
+  const groupedTools = tools.reduce<Record<string, typeof tools>>((groups, tool) => {
+    const groupName = tool.subcategory ?? category;
+    groups[groupName] ??= [];
+    groups[groupName].push(tool);
+    return groups;
+  }, {});
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
@@ -33,7 +39,7 @@ export function CategoryLandingPage({
         <div className="grid items-center gap-8 md:grid-cols-[1fr_220px]">
           <div>
             <div className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${accentClasses[accent]}`}>
-              {tools.length} browser-based tools
+              {tools.length} available tools
             </div>
             <h1 className="mt-4 text-4xl font-black tracking-tight text-slate-950 sm:text-5xl">{title}</h1>
             <p className="mt-4 max-w-2xl text-base leading-7 text-slate-600 sm:text-lg">{description}</p>
@@ -54,25 +60,14 @@ export function CategoryLandingPage({
       </section>
 
       <section className="mt-10">
-        <h2 className="text-2xl font-bold text-slate-900">Choose a tool</h2>
-        <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {tools.map((tool) => (
-            <Link
-              key={tool.id}
-              href={tool.path}
-              className="group rounded-3xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-violet-200 hover:shadow-md"
-            >
-              <h3 className="flex items-center justify-between gap-3 font-semibold text-slate-900">
-                {tool.name}
-                <ArrowRight className="h-4 w-4 shrink-0 text-violet-600 transition group-hover:translate-x-1" />
-              </h3>
-              <p className="mt-2 text-sm leading-6 text-slate-600">{tool.description}</p>
-              <p className="mt-4 text-xs font-medium text-slate-400">
-                Supports {tool.supportedFormats.join(", ")}
-              </p>
-            </Link>
-          ))}
-        </div>
+        {Object.entries(groupedTools).map(([groupName, groupTools]) => (
+          <section key={groupName} className="mb-10 last:mb-0">
+            <h2 className="mb-4 text-xl font-bold text-slate-900">{groupName}</h2>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {groupTools.map((tool) => <ToolGridCard key={tool.id} tool={tool} />)}
+            </div>
+          </section>
+        ))}
       </section>
     </div>
   );

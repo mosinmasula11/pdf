@@ -3,7 +3,7 @@ import { CategoryLandingPage } from "@/components/categories/CategoryLandingPage
 
 export const metadata: Metadata = {
   title: "PDF Tools",
-  description: "Convert, merge, split, rotate and work with PDF documents using private browser-based tools.",
+  description: "Convert, merge, split, rotate and work with PDF documents using private file tools.",
 };
 
 export default function PdfToolsPage() {

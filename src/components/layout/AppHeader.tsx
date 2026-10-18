@@ -9,9 +9,34 @@ const toolMenus = [
     label: "All PDF tools",
     href: "/pdf-tools",
     groups: [
-      { title: "Organize PDF", toolIds: ["merge-pdf", "split-pdf"] },
-      { title: "Convert PDF", toolIds: ["jpg-to-pdf", "pdf-to-jpg"] },
-      { title: "Edit PDF", toolIds: ["rotate-pdf"] },
+      {
+        title: "Organize PDF",
+        toolIds: ["merge-pdf", "split-pdf", "remove-pages", "extract-pages", "organize-pdf", "scan-pdf"],
+      },
+      {
+        title: "Optimize PDF",
+        toolIds: ["compress-pdf", "repair-pdf", "ocr-pdf"],
+      },
+      {
+        title: "Convert to PDF",
+        toolIds: ["jpg-to-pdf", "word-to-pdf", "powerpoint-to-pdf", "excel-to-pdf", "html-to-pdf"],
+      },
+      {
+        title: "Convert from PDF",
+        toolIds: ["pdf-to-jpg", "pdf-to-word", "pdf-to-powerpoint", "pdf-to-excel", "convert-pdf-to-pdfa"],
+      },
+      {
+        title: "Edit PDF",
+        toolIds: ["rotate-pdf", "add-page-numbers", "add-watermark", "crop-pdf", "edit-pdf", "pdf-forms"],
+      },
+      {
+        title: "PDF Security",
+        toolIds: ["unlock-pdf", "protect-pdf", "sign-pdf", "redact-pdf", "compare-pdf"],
+      },
+      {
+        title: "PDF Intelligence",
+        toolIds: ["pdf-summarize", "translate-pdf", "pdf-to-markdown"],
+      },
     ],
   },
   {
@@ -34,12 +59,21 @@ const toolMenus = [
 
 function ToolMenuGroups({ menuIndex }: { menuIndex: number }) {
   const menu = toolMenus[menuIndex];
+  const isPdfTools = menuIndex === 0;
 
   return (
-    <div className={`grid gap-4 ${menu.groups.length === 3 ? "grid-cols-1 lg:grid-cols-3" : "grid-cols-1 sm:grid-cols-2"}`}>
+    <div
+      className={`grid gap-5 ${
+        isPdfTools
+          ? "grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7"
+          : menu.groups.length === 3
+          ? "grid-cols-1 lg:grid-cols-3"
+          : "grid-cols-1 sm:grid-cols-2"
+      }`}
+    >
       {menu.groups.map((group) => (
-        <section key={group.title}>
-          <h3 className="mb-3 text-xs font-bold uppercase tracking-[0.14em] text-slate-400">
+        <section key={group.title} className="flex flex-col">
+          <h3 className="mb-2.5 text-[11px] font-bold uppercase tracking-[0.14em] text-violet-600">
             {group.title}
           </h3>
           <ul className="space-y-1">
@@ -51,16 +85,15 @@ function ToolMenuGroups({ menuIndex }: { menuIndex: number }) {
                 <li key={tool.id}>
                   <Link
                     href={tool.path}
-                    className="group/tool flex items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-violet-50 hover:text-violet-800"
+                    className="group/tool flex items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-violet-50 hover:text-violet-800"
                   >
-                    <span>{tool.name}</span>
-                    {tool.status === "beta" && (
-                      <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
+                    <span className="truncate">{tool.name}</span>
+                    {tool.status === "beta" ? (
+                      <span className="shrink-0 rounded-full bg-amber-50 px-1.5 py-0.2 text-[9px] font-semibold text-amber-700">
                         Beta
                       </span>
-                    )}
-                    {tool.status !== "beta" && (
-                      <ArrowUpRight className="h-4 w-4 shrink-0 text-slate-300 transition group-hover/tool:text-violet-600" />
+                    ) : (
+                      <ArrowUpRight className="h-3 w-3 shrink-0 text-slate-300 transition group-hover/tool:text-violet-600" />
                     )}
                   </Link>
                 </li>
@@ -99,13 +132,17 @@ export function AppHeader() {
                 {menu.label}
                 <ChevronDown className="h-4 w-4 transition group-hover/nav:rotate-180 group-focus-within/nav:rotate-180" />
               </Link>
-              <div className="invisible pointer-events-none absolute left-1/2 top-full z-50 w-[min(88vw,880px)] -translate-x-1/2 translate-y-2 pt-2 opacity-0 transition duration-150 group-hover/nav:visible group-hover/nav:pointer-events-auto group-hover/nav:translate-y-0 group-hover/nav:opacity-100 group-focus-within/nav:visible group-focus-within/nav:pointer-events-auto group-focus-within/nav:translate-y-0 group-focus-within/nav:opacity-100">
-                <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xl shadow-slate-900/10">
-                  <div className="mb-5 flex items-center justify-between border-b border-slate-100 pb-4">
+              <div
+                className={`invisible pointer-events-none absolute left-1/2 top-full z-50 -translate-x-1/2 translate-y-2 pt-2 opacity-0 transition duration-150 group-hover/nav:visible group-hover/nav:pointer-events-auto group-hover/nav:translate-y-0 group-hover/nav:opacity-100 group-focus-within/nav:visible group-focus-within/nav:pointer-events-auto group-focus-within/nav:translate-y-0 group-focus-within/nav:opacity-100 ${
+                  index === 0 ? "w-[min(96vw,1200px)]" : "w-[min(88vw,800px)]"
+                }`}
+              >
+                <div className="max-h-[82vh] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-6 shadow-xl shadow-slate-900/10">
+                  <div className="mb-4 flex items-center justify-between border-b border-slate-100 pb-3">
                     <div>
                       <p className="text-base font-bold text-slate-900">{menu.label}</p>
-                      <p className="mt-1 text-xs font-normal text-slate-500">
-                        Choose a tool to get started
+                      <p className="mt-0.5 text-xs font-normal text-slate-500">
+                        Choose a tool to get started immediately
                       </p>
                     </div>
                     <Link href={menu.href} className="inline-flex items-center gap-1 text-xs font-semibold text-violet-700 hover:text-violet-900">
@@ -138,7 +175,7 @@ export function AppHeader() {
             <Menu className="h-4 w-4" />
             <span className="sr-only">Open main menu</span>
           </summary>
-          <div className="absolute right-0 top-full z-50 mt-3 max-h-[75vh] w-[min(92vw,420px)] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-5 shadow-xl">
+          <div className="absolute right-0 top-full z-50 mt-3 max-h-[75vh] w-[min(92vw,440px)] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-5 shadow-xl">
             <div className="mb-3 flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
               <Search className="h-4 w-4" />
               <input aria-label="Search tools" placeholder="Search tools" className="w-full bg-transparent outline-none placeholder:text-slate-400" />

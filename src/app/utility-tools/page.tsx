@@ -3,7 +3,7 @@ import { CategoryLandingPage } from "@/components/categories/CategoryLandingPage
 
 export const metadata: Metadata = {
   title: "Utility Tools",
-  description: "Use quick browser-based helpers for text analysis and JSON formatting.",
+  description: "Use quick helpers for text analysis and JSON formatting.",
 };
 
 export default function UtilityToolsPage() {
