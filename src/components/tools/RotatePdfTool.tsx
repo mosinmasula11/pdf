@@ -15,6 +15,7 @@ export function RotatePdfTool() {
 
   const handleFile = (incoming: FileList | null) => {
     if (!incoming || !incoming[0]) return;
+    setResultBlob(null);
     const selected = incoming[0];
     if (selected.type !== "application/pdf" && !selected.name.toLowerCase().endsWith(".pdf")) {
       setError("Please choose a PDF file.");

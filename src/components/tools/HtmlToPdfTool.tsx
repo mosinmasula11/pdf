@@ -39,6 +39,8 @@ export function HtmlToPdfTool() {
 
   const handleFileUpload = (incoming: FileList | null) => {
     if (!incoming || !incoming[0]) return;
+    setResultBlob(null);
+    setError(null);
     const file = incoming[0];
     const reader = new FileReader();
     reader.onload = () => {
@@ -275,4 +277,3 @@ export function HtmlToPdfTool() {
     </div>
   );
 }
-

@@ -15,6 +15,8 @@ export function PdfToJpgTool() {
 
   const handleFile = (incoming: FileList | null) => {
     if (!incoming || !incoming[0]) return;
+    setResultBlob(null);
+    setPageCount(null);
     const selected = incoming[0];
     setFile(selected);
     setResultBlob(null);

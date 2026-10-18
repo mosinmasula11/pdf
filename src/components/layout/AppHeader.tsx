@@ -1,6 +1,10 @@
+"use client";
+
+import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowUpRight, ChevronDown, Menu, Search } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { ArrowUpRight, ChevronDown, Menu, Search, X } from "lucide-react";
 import { siteConfig } from "@/lib/site-config";
 import { toolRegistry } from "@/lib/tool-registry";
 
@@ -57,7 +61,13 @@ const toolMenus = [
   },
 ];
 
-function ToolMenuGroups({ menuIndex }: { menuIndex: number }) {
+function ToolMenuGroups({
+  menuIndex,
+  onItemClick,
+}: {
+  menuIndex: number;
+  onItemClick?: () => void;
+}) {
   const menu = toolMenus[menuIndex];
   const isPdfTools = menuIndex === 0;
 
@@ -85,6 +95,12 @@ function ToolMenuGroups({ menuIndex }: { menuIndex: number }) {
                 <li key={tool.id}>
                   <Link
                     href={tool.path}
+                    onClick={() => {
+                      onItemClick?.();
+                      if (typeof document !== "undefined") {
+                        (document.activeElement as HTMLElement)?.blur();
+                      }
+                    }}
                     className="group/tool flex items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-violet-50 hover:text-violet-800"
                   >
                     <span className="truncate">{tool.name}</span>
@@ -107,10 +123,86 @@ function ToolMenuGroups({ menuIndex }: { menuIndex: number }) {
 }
 
 export function AppHeader() {
+  const pathname = usePathname();
+  const router = useRouter();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [hoveredMenuIndex, setHoveredMenuIndex] = useState<number | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isDesktopSearchOpen, setIsDesktopSearchOpen] = useState(false);
+  const desktopSearchRef = useRef<HTMLDivElement>(null);
+
+  // Auto-close mobile menu on route change
+  useEffect(() => {
+    setMobileMenuOpen(false);
+    setHoveredMenuIndex(null);
+    setIsDesktopSearchOpen(false);
+    setSearchQuery("");
+  }, [pathname]);
+
+  // Handle ESC key to close any open menu
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        setMobileMenuOpen(false);
+        setHoveredMenuIndex(null);
+        setIsDesktopSearchOpen(false);
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
+  // Prevent background scrolling when mobile menu is open
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [mobileMenuOpen]);
+
+  // Click outside listener for desktop search
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (desktopSearchRef.current && !desktopSearchRef.current.contains(event.target as Node)) {
+        setIsDesktopSearchOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const filteredTools = searchQuery.trim()
+    ? toolRegistry.filter(
+        (tool) =>
+          tool.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          tool.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          tool.category.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : [];
+
+  const handleLinkClick = () => {
+    setMobileMenuOpen(false);
+    setHoveredMenuIndex(null);
+    setIsDesktopSearchOpen(false);
+    setSearchQuery("");
+    if (typeof document !== "undefined") {
+      (document.activeElement as HTMLElement)?.blur();
+    }
+  };
+
   return (
     <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/95 backdrop-blur-xl">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
-        <Link href="/" aria-label={`${siteConfig.brandName} home`} className="flex shrink-0 items-center">
+        <Link
+          href="/"
+          aria-label={`${siteConfig.brandName} home`}
+          onClick={handleLinkClick}
+          className="flex shrink-0 items-center"
+        >
           <Image
             src="/branding/msyn-tools-logo.png"
             alt={siteConfig.brandName}
@@ -121,79 +213,253 @@ export function AppHeader() {
           />
         </Link>
 
-        <nav aria-label="Main navigation" className="relative hidden items-center gap-1 text-sm font-semibold text-slate-700 lg:flex">
-          {toolMenus.map((menu, index) => (
-            <div key={menu.href} className="group/nav">
-              <Link
-                href={menu.href}
-                aria-haspopup="true"
-                className="inline-flex items-center gap-1 rounded-xl px-3 py-2.5 transition hover:bg-slate-100 hover:text-violet-700 focus-visible:outline-2 focus-visible:outline-violet-600"
-              >
-                {menu.label}
-                <ChevronDown className="h-4 w-4 transition group-hover/nav:rotate-180 group-focus-within/nav:rotate-180" />
-              </Link>
+        {/* Desktop Navigation */}
+        <nav
+          aria-label="Main navigation"
+          className="relative hidden items-center gap-1 text-sm font-semibold text-slate-700 lg:flex"
+        >
+          {toolMenus.map((menu, index) => {
+            const isMenuOpen = hoveredMenuIndex === index;
+
+            return (
               <div
-                className={`invisible pointer-events-none absolute left-1/2 top-full z-50 -translate-x-1/2 translate-y-2 pt-2 opacity-0 transition duration-150 group-hover/nav:visible group-hover/nav:pointer-events-auto group-hover/nav:translate-y-0 group-hover/nav:opacity-100 group-focus-within/nav:visible group-focus-within/nav:pointer-events-auto group-focus-within/nav:translate-y-0 group-focus-within/nav:opacity-100 ${
-                  index === 0 ? "w-[min(96vw,1200px)]" : "w-[min(88vw,800px)]"
-                }`}
+                key={menu.href}
+                className="relative"
+                onMouseEnter={() => setHoveredMenuIndex(index)}
+                onMouseLeave={() => setHoveredMenuIndex(null)}
               >
-                <div className="max-h-[82vh] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-6 shadow-xl shadow-slate-900/10">
-                  <div className="mb-4 flex items-center justify-between border-b border-slate-100 pb-3">
-                    <div>
-                      <p className="text-base font-bold text-slate-900">{menu.label}</p>
-                      <p className="mt-0.5 text-xs font-normal text-slate-500">
-                        Choose a tool to get started immediately
-                      </p>
+                <Link
+                  href={menu.href}
+                  aria-haspopup="true"
+                  aria-expanded={isMenuOpen}
+                  onClick={handleLinkClick}
+                  className={`inline-flex items-center gap-1 rounded-xl px-3 py-2.5 transition focus-visible:outline-2 focus-visible:outline-violet-600 ${
+                    isMenuOpen
+                      ? "bg-slate-100 text-violet-700"
+                      : "hover:bg-slate-100 hover:text-violet-700"
+                  }`}
+                >
+                  {menu.label}
+                  <ChevronDown
+                    className={`h-4 w-4 transition duration-200 ${
+                      isMenuOpen ? "rotate-180 text-violet-700" : ""
+                    }`}
+                  />
+                </Link>
+
+                {isMenuOpen && (
+                  <div
+                    className={`absolute left-1/2 top-full z-50 -translate-x-1/2 pt-2 transition duration-150 ${
+                      index === 0 ? "w-[min(96vw,1200px)]" : "w-[min(88vw,800px)]"
+                    }`}
+                  >
+                    <div className="max-h-[82vh] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-6 shadow-xl shadow-slate-900/10">
+                      <div className="mb-4 flex items-center justify-between border-b border-slate-100 pb-3">
+                        <div>
+                          <p className="text-base font-bold text-slate-900">{menu.label}</p>
+                          <p className="mt-0.5 text-xs font-normal text-slate-500">
+                            Choose a tool to get started immediately
+                          </p>
+                        </div>
+                        <Link
+                          href={menu.href}
+                          onClick={handleLinkClick}
+                          className="inline-flex items-center gap-1 text-xs font-semibold text-violet-700 hover:text-violet-900"
+                        >
+                          Browse category <ArrowUpRight className="h-3.5 w-3.5" />
+                        </Link>
+                      </div>
+                      <ToolMenuGroups menuIndex={index} onItemClick={handleLinkClick} />
                     </div>
-                    <Link href={menu.href} className="inline-flex items-center gap-1 text-xs font-semibold text-violet-700 hover:text-violet-900">
-                      Browse category <ArrowUpRight className="h-3.5 w-3.5" />
-                    </Link>
                   </div>
-                  <ToolMenuGroups menuIndex={index} />
-                </div>
+                )}
               </div>
-            </div>
-          ))}
-          <Link href="/tools" className="rounded-xl px-3 py-2.5 transition hover:bg-slate-100 hover:text-violet-700">
+            );
+          })}
+          <Link
+            href="/tools"
+            onClick={handleLinkClick}
+            className="rounded-xl px-3 py-2.5 transition hover:bg-slate-100 hover:text-violet-700"
+          >
             All tools
           </Link>
         </nav>
 
-        <div className="hidden items-center gap-2 md:flex">
-          <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600 shadow-sm">
-            <Search className="h-4 w-4" />
+        {/* Desktop Search Bar */}
+        <div ref={desktopSearchRef} className="relative hidden items-center gap-2 md:flex">
+          <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600 shadow-sm focus-within:border-violet-500 focus-within:bg-white focus-within:ring-2 focus-within:ring-violet-500/20">
+            <Search className="h-4 w-4 text-slate-400" />
             <input
               aria-label="Search tools"
-              placeholder="Search tools"
-              className="w-28 border-0 bg-transparent text-sm text-slate-700 outline-none placeholder:text-slate-400 sm:w-36"
+              placeholder="Search tools..."
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setIsDesktopSearchOpen(e.target.value.trim().length > 0);
+              }}
+              onFocus={() => {
+                if (searchQuery.trim().length > 0) setIsDesktopSearchOpen(true);
+              }}
+              className="w-28 border-0 bg-transparent text-sm text-slate-700 outline-none placeholder:text-slate-400 sm:w-40"
             />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchQuery("");
+                  setIsDesktopSearchOpen(false);
+                }}
+                className="text-slate-400 hover:text-slate-600"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
           </label>
+
+          {/* Desktop Search Results Dropdown */}
+          {isDesktopSearchOpen && (
+            <div className="absolute right-0 top-full z-50 mt-2 max-h-96 w-80 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-3 shadow-xl">
+              <p className="mb-2 px-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                {filteredTools.length} {filteredTools.length === 1 ? "tool found" : "tools found"}
+              </p>
+              {filteredTools.length > 0 ? (
+                <ul className="space-y-1">
+                  {filteredTools.map((tool) => (
+                    <li key={tool.id}>
+                      <Link
+                        href={tool.path}
+                        onClick={handleLinkClick}
+                        className="flex flex-col rounded-lg px-2.5 py-1.5 transition hover:bg-violet-50"
+                      >
+                        <span className="text-xs font-semibold text-slate-800">{tool.name}</span>
+                        <span className="truncate text-[11px] text-slate-500">{tool.description}</span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <div className="p-4 text-center text-xs text-slate-500">
+                  No tools found matching &quot;{searchQuery}&quot;
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
-        <details className="group/mobile relative lg:hidden">
-          <summary className="flex h-10 w-10 cursor-pointer list-none items-center justify-center rounded-xl border border-slate-200 text-slate-700 transition hover:bg-slate-100 [&::-webkit-details-marker]:hidden">
-            <Menu className="h-4 w-4" />
-            <span className="sr-only">Open main menu</span>
-          </summary>
-          <div className="absolute right-0 top-full z-50 mt-3 max-h-[75vh] w-[min(92vw,440px)] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-5 shadow-xl">
-            <div className="mb-3 flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
-              <Search className="h-4 w-4" />
-              <input aria-label="Search tools" placeholder="Search tools" className="w-full bg-transparent outline-none placeholder:text-slate-400" />
-            </div>
-            {toolMenus.map((menu, index) => (
-              <section key={menu.href} className="border-b border-slate-100 py-3 last:border-0">
-                <Link href={menu.href} className="mb-2 block text-sm font-bold text-violet-700">
-                  {menu.label}
-                </Link>
-                <ToolMenuGroups menuIndex={index} />
-              </section>
-            ))}
-            <Link href="/tools" className="mt-3 block rounded-xl bg-slate-50 px-3 py-2.5 text-sm font-semibold text-slate-800">
-              Browse all tools
-            </Link>
-          </div>
-        </details>
+        {/* Mobile Menu Toggle Button */}
+        <button
+          type="button"
+          onClick={() => setMobileMenuOpen((prev) => !prev)}
+          className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 text-slate-700 transition hover:bg-slate-100 lg:hidden"
+          aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
+          aria-expanded={mobileMenuOpen}
+        >
+          {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+        </button>
       </div>
+
+      {/* Mobile Drawer & Backdrop */}
+      {mobileMenuOpen && (
+        <>
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 top-[65px] z-40 bg-slate-900/40 backdrop-blur-sm lg:hidden"
+            onClick={handleLinkClick}
+            aria-hidden="true"
+          />
+
+          {/* Drawer Content */}
+          <div className="fixed inset-x-0 top-[65px] z-50 max-h-[calc(100vh-65px)] overflow-y-auto border-b border-slate-200 bg-white p-5 shadow-2xl lg:hidden">
+            {/* Mobile Search */}
+            <div className="mb-4 flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-600 focus-within:border-violet-500 focus-within:bg-white focus-within:ring-2 focus-within:ring-violet-500/20">
+              <Search className="h-4 w-4 text-slate-400" />
+              <input
+                aria-label="Search tools"
+                placeholder="Search all 33+ tools..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-transparent outline-none placeholder:text-slate-400"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  className="text-slate-400 hover:text-slate-600"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+
+            {/* If searching on mobile, show search results */}
+            {searchQuery.trim().length > 0 ? (
+              <div className="space-y-2">
+                <p className="px-1 text-xs font-semibold text-slate-500">
+                  Search results ({filteredTools.length})
+                </p>
+                {filteredTools.length > 0 ? (
+                  <ul className="space-y-1">
+                    {filteredTools.map((tool) => (
+                      <li key={tool.id}>
+                        <Link
+                          href={tool.path}
+                          onClick={handleLinkClick}
+                          className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50/50 p-2.5 transition active:bg-violet-50"
+                        >
+                          <div>
+                            <p className="text-xs font-bold text-slate-900">{tool.name}</p>
+                            <p className="line-clamp-1 text-[11px] text-slate-500">{tool.description}</p>
+                          </div>
+                          <ArrowUpRight className="h-4 w-4 shrink-0 text-violet-600" />
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <div className="rounded-xl border border-dashed border-slate-200 p-6 text-center text-xs text-slate-500">
+                    No tools found matching &quot;{searchQuery}&quot;
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* Regular Mobile Navigation Groups */
+              <div>
+                {toolMenus.map((menu, index) => (
+                  <section key={menu.href} className="border-b border-slate-100 py-3.5 first:pt-0 last:border-0">
+                    <div className="mb-2 flex items-center justify-between">
+                      <Link
+                        href={menu.href}
+                        onClick={handleLinkClick}
+                        className="text-sm font-bold text-violet-700 hover:text-violet-900"
+                      >
+                        {menu.label}
+                      </Link>
+                      <Link
+                        href={menu.href}
+                        onClick={handleLinkClick}
+                        className="text-[11px] font-semibold text-slate-500 hover:text-violet-700"
+                      >
+                        View all
+                      </Link>
+                    </div>
+                    <ToolMenuGroups menuIndex={index} onItemClick={handleLinkClick} />
+                  </section>
+                ))}
+
+                <div className="mt-4 pt-2">
+                  <Link
+                    href="/tools"
+                    onClick={handleLinkClick}
+                    className="flex w-full items-center justify-center rounded-xl bg-violet-600 py-3 text-center text-sm font-bold text-white shadow-md shadow-violet-600/20 transition active:scale-[0.99] hover:bg-violet-700"
+                  >
+                    Browse all tools
+                  </Link>
+                </div>
+              </div>
+            )}
+          </div>
+        </>
+      )}
     </header>
   );
 }

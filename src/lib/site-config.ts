@@ -14,4 +14,5 @@ export const siteConfig = {
     { name: "Image Tools", slug: "image-tools" },
     { name: "Utility Tools", slug: "utility-tools" },
   ],
+  googleAdsenseId: "ca-pub-6265353018392703",
 };

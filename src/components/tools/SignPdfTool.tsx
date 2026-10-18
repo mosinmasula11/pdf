@@ -26,6 +26,7 @@ export function SignPdfTool() {
 
   const handleFile = async (incoming: FileList | null) => {
     if (!incoming || !incoming[0]) return;
+    setResultBlob(null);
     const selected = incoming[0];
     if (selected.type !== "application/pdf" && !selected.name.toLowerCase().endsWith(".pdf")) {
       setError("Please choose a valid PDF file.");
@@ -95,6 +96,7 @@ export function SignPdfTool() {
   const handleSigUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
     if (!f) return;
+    setResultBlob(null);
     const reader = new FileReader();
     reader.onload = () => {
       uploadedSigRef.current = String(reader.result);
@@ -402,4 +404,3 @@ export function SignPdfTool() {
     </div>
   );
 }
-

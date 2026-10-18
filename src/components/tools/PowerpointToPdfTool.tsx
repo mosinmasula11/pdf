@@ -22,6 +22,8 @@ export function PowerpointToPdfTool() {
 
   const handleFile = (incoming: FileList | null) => {
     if (!incoming || !incoming[0]) return;
+    setResultBlob(null);
+    setSlides([]);
     const selected = incoming[0];
     const name = selected.name.toLowerCase();
     if (!name.endsWith(".pptx") && !name.endsWith(".ppt")) {
@@ -300,4 +302,3 @@ export function PowerpointToPdfTool() {
     </div>
   );
 }
-

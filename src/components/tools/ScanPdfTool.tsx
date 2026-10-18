@@ -118,6 +118,8 @@ export function ScanPdfTool() {
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
+    setResultBlob(null);
+    setError(null);
 
     Array.from(files).forEach((file) => {
       const reader = new FileReader();
@@ -391,4 +393,3 @@ export function ScanPdfTool() {
     </div>
   );
 }
-

@@ -16,6 +16,8 @@ export function WordToPdfTool() {
 
   const handleFile = (incoming: FileList | null) => {
     if (!incoming || !incoming[0]) return;
+    setResultBlob(null);
+    setExtractedPreview([]);
     const selected = incoming[0];
     const name = selected.name.toLowerCase();
     if (
@@ -267,4 +269,3 @@ export function WordToPdfTool() {
     </div>
   );
 }
-

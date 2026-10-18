@@ -19,6 +19,7 @@ export function ExtractPagesTool() {
 
   const handleFile = async (incoming: FileList | null) => {
     if (!incoming || !incoming[0]) return;
+    setResultBlob(null);
     const selected = incoming[0];
     if (selected.type !== "application/pdf" && !selected.name.toLowerCase().endsWith(".pdf")) {
       setError("Please choose a valid PDF file.");
@@ -321,4 +322,3 @@ export function ExtractPagesTool() {
     </div>
   );
 }
-

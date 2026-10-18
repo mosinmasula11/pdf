@@ -19,6 +19,8 @@ export function RepairPdfTool() {
 
   const handleFile = (incoming: FileList | null) => {
     if (!incoming || !incoming[0]) return;
+    setResultBlob(null);
+    setRepairReport(null);
     setFile(incoming[0]);
     setResultBlob(null);
     setRepairReport(null);
@@ -190,4 +192,3 @@ export function RepairPdfTool() {
     </div>
   );
 }
-

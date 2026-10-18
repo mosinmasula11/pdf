@@ -14,6 +14,7 @@ export function MergePdfTool() {
 
   const handleFiles = (incoming: FileList | null) => {
     if (!incoming) return;
+    setResultBlob(null);
     const next = Array.from(incoming).filter((file) => file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf"));
     setFiles(next);
     setError(next.length === 0 ? "Please choose PDF files to merge." : null);

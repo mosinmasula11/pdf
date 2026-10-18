@@ -25,6 +25,7 @@ export function ComparePdfTool() {
 
   const handleFileA = (incoming: FileList | null) => {
     if (!incoming || !incoming[0]) return;
+    setDiffResults(null);
     setFileA(incoming[0]);
     setDiffResults(null);
     setError(null);
@@ -32,6 +33,7 @@ export function ComparePdfTool() {
 
   const handleFileB = (incoming: FileList | null) => {
     if (!incoming || !incoming[0]) return;
+    setDiffResults(null);
     setFileB(incoming[0]);
     setDiffResults(null);
     setError(null);
@@ -242,4 +244,3 @@ export function ComparePdfTool() {
     </div>
   );
 }
-

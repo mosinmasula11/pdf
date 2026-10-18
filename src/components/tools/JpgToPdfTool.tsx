@@ -15,6 +15,8 @@ export function JpgToPdfTool() {
 
   const handleFiles = (incoming: FileList | null) => {
     if (!incoming) return;
+    setResultBlob(null);
+    setOutputSize(null);
     const next = Array.from(incoming).filter((file) => /image\/(png|jpeg|jpg)/.test(file.type));
     setFiles(next);
     setError(next.length === 0 ? "Please choose JPG or PNG images." : null);

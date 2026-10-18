@@ -24,6 +24,12 @@ export function ResizeImageTool() {
 
   const handleFile = async (incoming: FileList | null) => {
     if (!incoming || !incoming[0]) return;
+    setResultBlob(null);
+    setOutputSize(null);
+    setPreviewUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return null;
+    });
     const selected = incoming[0];
     if (!accepted.includes(selected.type) && !/(png|jpg|jpeg|webp)$/i.test(selected.name)) {
       setError("Choose a JPG, PNG or WebP image.");

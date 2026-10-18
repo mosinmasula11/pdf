@@ -45,6 +45,9 @@ export function ResizeImageToCustomKbTool() {
 
   const handleFile = (incoming: FileList | null) => {
     if (!incoming || !incoming[0]) return;
+    setResultBlob(null);
+    setOutputSize(null);
+    setPreviewUrl(null);
     const selected = incoming[0];
     if (!/image\/(png|jpeg|jpg|webp)/.test(selected.type) && !/(png|jpg|jpeg|webp)$/i.test(selected.name)) {
       setError("Use a JPG, PNG, or WebP file.");

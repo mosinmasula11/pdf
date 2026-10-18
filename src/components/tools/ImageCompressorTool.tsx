@@ -18,6 +18,9 @@ export function ImageCompressorTool() {
 
   const handleFile = (incoming: FileList | null) => {
     if (!incoming || !incoming[0]) return;
+    setResultBlob(null);
+    setOutputSize(null);
+    setPreviewUrl(null);
     const selected = incoming[0];
     const allowed = ["image/jpeg", "image/png", "image/webp"]; 
     if (!allowed.includes(selected.type) && !/(png|jpg|jpeg|webp)$/i.test(selected.name)) {

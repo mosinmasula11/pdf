@@ -16,6 +16,8 @@ export function ExcelToPdfTool() {
 
   const handleFile = (incoming: FileList | null) => {
     if (!incoming || !incoming[0]) return;
+    setResultBlob(null);
+    setTablePreview([]);
     const selected = incoming[0];
     const name = selected.name.toLowerCase();
     if (
@@ -331,4 +333,3 @@ export function ExcelToPdfTool() {
     </div>
   );
 }
-
