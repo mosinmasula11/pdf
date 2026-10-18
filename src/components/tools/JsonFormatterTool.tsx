@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Braces, CheckCircle2, LoaderCircle, Sparkles } from "lucide-react";
 
 export function JsonFormatterTool() {
-  const [value, setValue] = useState('{"name":"Maargre","tools":["PDF","Image"]}');
+  const [value, setValue] = useState('{"name":"MSYN Tools","tools":["PDF","Image"]}');
   const [error, setError] = useState<string | null>(null);
   const [processing, setProcessing] = useState(false);
   const [formatted, setFormatted] = useState<string>("");

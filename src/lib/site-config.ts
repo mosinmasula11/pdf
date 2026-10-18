@@ -1,6 +1,6 @@
 export const siteConfig = {
-  brandName: "Maargre Tools",
-  shortName: "Maargre",
+  brandName: "MSYN Tools",
+  shortName: "MSYN",
   tagline: "Free online PDF, image and file tools",
   description:
     "Compress, convert, resize and manage your files locally in your browser with fast, private and free online tools.",
@@ -9,6 +9,6 @@ export const siteConfig = {
   categories: [
     { name: "PDF Tools", slug: "pdf-tools" },
     { name: "Image Tools", slug: "image-tools" },
-    { name: "Utilities", slug: "utilities" },
+    { name: "Utility Tools", slug: "utility-tools" },
   ],
 };

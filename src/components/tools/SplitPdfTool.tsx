@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { PDFDocument } from "pdf-lib";
-import JSZip from "jszip";
 import { Download, FileText, LoaderCircle } from "lucide-react";
 import { downloadBlob, formatBytes } from "@/lib/browser-utils";
 

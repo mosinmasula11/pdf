@@ -5,7 +5,7 @@ import { toolRegistry } from "@/lib/tool-registry";
 
 export const metadata: Metadata = {
   title: "All Tools",
-  description: "Browse all PDF, image and utility tools available on Maargre Tools.",
+  description: "Browse all PDF, image and utility tools available on MSYN Tools.",
 };
 
 export default function ToolsPage() {

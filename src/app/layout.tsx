@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { SiteShell } from "@/components/layout/SiteShell";
+import { siteConfig } from "@/lib/site-config";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -14,16 +15,23 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(siteConfig.url),
   title: {
-    default: "Maargre Tools | Free PDF, Image & Utility Tools",
-    template: "%s | Maargre Tools",
+    default: "MSYN Tools | Free PDF, Image & Utility Tools",
+    template: "%s | MSYN Tools",
   },
   description: "Fast, free and private browser-based PDF, image and utility tools designed for everyday file workflows.",
   keywords: ["PDF tools", "image compressor", "resize image", "merge PDF", "online file tools"],
+  manifest: "/manifest.webmanifest",
+  icons: {
+    icon: "/icons/icon-192.png",
+    apple: "/icons/icon-192.png",
+  },
   openGraph: {
-    title: "Maargre Tools",
+    title: "MSYN Tools",
     description: "Free online tools for PDF conversion, image optimization and everyday file work.",
     type: "website",
+    images: ["/og-image.png"],
   },
 };
 
