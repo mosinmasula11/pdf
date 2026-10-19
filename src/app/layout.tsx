@@ -103,7 +103,7 @@ export const metadata: Metadata = {
   manifest: "/manifest.webmanifest",
   icons: {
     icon: [
-      { url: "/logo_for_title.ico" },
+      { url: "/favicon.ico", type: "image/x-icon" },
       { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
     ],
     apple: "/icons/icon-192.png",
