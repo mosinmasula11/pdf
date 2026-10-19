@@ -1,5 +1,7 @@
 import { afterEach, expect, it, vi } from "vitest";
-import { callPublicApi } from "./api-proxy";
+import { lookup } from "node:dns/promises";
+import type { LookupAddress, LookupAllOptions } from "node:dns";
+import { callPublicApi, resolveApiDestination } from "./api-proxy";
 
 const fake = vi.hoisted(() => ({ replies: [] as { status: number; headers?: Record<string,string>; body?: Buffer; hang?: boolean }[], calls: [] as { url: string; options: Record<string, unknown>; body: string }[] }));
 vi.mock("node:dns/promises", () => ({ lookup: vi.fn(async () => [{ address: "1.1.1.1", family: 4 }]) }));
@@ -22,8 +24,21 @@ vi.mock("node:http", async () => {
   } };
 });
 vi.mock("node:https", async () => ({ request: (await import("node:http")).request }));
-afterEach(() => { fake.calls.length = 0; fake.replies.length = 0; });
+const lookupAll = vi.mocked(lookup as (host: string, options: LookupAllOptions) => Promise<LookupAddress[]>);
+afterEach(() => { fake.calls.length = 0; fake.replies.length = 0; lookupAll.mockResolvedValue([{ address: "1.1.1.1", family: 4 }]); });
 const input = { url: "https://example.com/api", method: "POST", headers: { Authorization: "Bearer qa" }, body: "QA body" };
+
+it.each(["127.0.0.1", "10.0.0.1", "169.254.169.254", "::1", "::ffff:127.0.0.1"])("blocks private or mapped destination %s before connecting", async address => {
+  lookupAll.mockResolvedValue([{ address, family: address.includes(":") ? 6 : 4 }]);
+  await expect(callPublicApi(input, new AbortController().signal)).rejects.toThrow("blocked");
+  expect(fake.calls).toHaveLength(0);
+});
+it("rejects mixed public/private DNS answers and empty DNS results", async () => {
+  lookupAll.mockResolvedValue([{ address: "1.1.1.1", family: 4 }, { address: "10.0.0.1", family: 4 }]);
+  await expect(resolveApiDestination(new URL(input.url), new AbortController().signal)).rejects.toThrow("blocked");
+  lookupAll.mockResolvedValue([]);
+  await expect(resolveApiDestination(new URL(input.url), new AbortController().signal)).rejects.toThrow("blocked");
+});
 
 it("pins validated DNS to the socket and preserves the exact body", async () => {
   fake.replies.push({ status: 201, headers: { "content-type": "application/json" }, body: Buffer.from('{"ok":true}') });
@@ -33,6 +48,10 @@ it("pins validated DNS to the socket and preserves the exact body", async () => 
   const callback = vi.fn();
   (fake.calls[0].options.lookup as (host: string, options: object, callback: unknown) => void)("example.com", {}, callback);
   expect(callback).toHaveBeenCalledWith(null, "1.1.1.1", 4);
+  const allCallback = vi.fn();
+  (fake.calls[0].options.lookup as (host: string, options: object, callback: unknown) => void)("example.com", { all: true }, allCallback);
+  expect(allCallback).toHaveBeenCalledWith(null, [{ address: "1.1.1.1", family: 4 }]);
+  expect(fake.calls[0].options.family).toBe(4);
   expect(fake.calls[0].options.autoSelectFamily).toBe(false);
 });
 it("revalidates redirects and never connects to a private destination", async () => {

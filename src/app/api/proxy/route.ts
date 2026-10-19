@@ -4,7 +4,7 @@ import { callPublicApi } from "@/lib/api-proxy";
 
 let active = 0, windowStart = 0, calls = 0;
 function failure(message: string, httpStatus: number) {
-  return NextResponse.json({ ok: false, status: 0, statusText: "Request Error", headers: {}, data: message,
+  return NextResponse.json({ ok: false, isError: true, status: 0, statusText: "Request Error", headers: {}, data: message,
     durationMs: 0, sizeBytes: 0, contentType: "text/plain", error: message }, { status: httpStatus });
 }
 export async function POST(request: Request) {

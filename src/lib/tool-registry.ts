@@ -644,14 +644,14 @@ export const toolRegistry: ToolDefinition[] = [
   },
   {
     id: "api-client",
-    name: "REST API Client",
-    description: "Browser-based REST API client to test endpoints, send HTTP requests (GET, POST, PUT, DELETE), inspect headers, and generate code snippets.",
+    name: "API Client",
+    description: "Test HTTP and WebSocket endpoints, organize HTTP collections, exchange live messages, and inspect responses.",
     category: "Utilities",
     subcategory: "Utilities",
     path: "/api-client",
     supportedFormats: ["JSON", "Text", "XML"],
-    seoTitle: "Online REST API Client & Tester | Free API Debugger",
-    metaDescription: "Test REST APIs, send HTTP requests with custom headers, query params, auth tokens, and JSON bodies. Includes CORS proxy and code export.",
+    seoTitle: "HTTP & WebSocket API Client | Free API Tester",
+    metaDescription: "Test HTTP APIs and native WebSocket connections. Manage collections, send text, JSON or binary messages, and inspect live event logs.",
     status: "working",
   },
   {

@@ -111,12 +111,15 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2 className="text-2xl font-bold text-slate-900">REST API Client Requests and Saved Drafts</h2>
+          <h2 className="text-2xl font-bold text-slate-900">HTTP and WebSocket API Client Data</h2>
           <p className="mt-2 text-sm leading-7">
             Sending a request transmits its URL, enabled headers, authentication, and body to the API endpoint you choose. Proxy mode routes that request through our server; direct mode sends it from your browser. Responses are returned to your browser. The proxy does not write request or response contents to application storage.
           </p>
           <p className="mt-2 text-sm leading-7">
             History and collections keep request drafts, including bodies, in this browser’s local storage. Authentication fields and custom header values are cleared in saved drafts, and recognized secret fields are redacted. Raw text can still contain sensitive data: review bodies before saving or sending them. Closing a tab does not erase saved drafts; use the history and collection controls to remove them.
+          </p>
+          <p className="mt-2 text-sm leading-7">
+            WebSocket direct mode connects from your browser to the endpoint you enter. If you select MSYN relay mode for custom handshake headers or authentication, your endpoint URL, headers, credentials and messages pass through our server to that endpoint. The relay verifies TLS certificates, blocks private and reserved destinations, and expires connections after five minutes. Relay sessions and their authorization tokens are held temporarily in server memory, not written to application storage. Message logs remain in browser memory unless you download them. Saved and recent connections use local browser storage; query values, headers, authentication values and subprotocols are not retained. Browser cookies apply only to direct connections and are not forwarded by the relay.
           </p>
         </section>
 

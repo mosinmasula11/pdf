@@ -1,5 +1,6 @@
 import { lookup } from "node:dns/promises";
 import { BlockList, isIP } from "node:net";
+import type { LookupFunction } from "node:net";
 import { request as httpRequest } from "node:http";
 import type { RequestOptions } from "node:http";
 import { request as httpsRequest } from "node:https";
@@ -39,6 +40,14 @@ export async function resolveApiDestination(url: URL, signal: AbortSignal) {
   return addresses[0];
 }
 
+// A custom lookup must honor Node's single-address and all-address callback forms.
+export function createPinnedApiLookup(destination: { address: string; family: number }): LookupFunction {
+  return (_hostname, options, callback) => {
+    if (options.all) callback(null, [{ address: destination.address, family: destination.family }]);
+    else callback(null, destination.address, destination.family);
+  };
+}
+
 export function proxyHeaders(input: Record<string, string>) {
   const headers = new Headers(input);
   const connectionHeaders = (headers.get("connection") || "").split(",").map(value => value.trim());
@@ -63,7 +72,7 @@ export async function callPublicApi(input: ProxyInput, signal: AbortSignal) {
       if (body !== null && !["GET", "HEAD"].includes(method)) requestHeaders["content-length"] = String(Buffer.byteLength(body, "utf8"));
       const options: RequestOptions & { autoSelectFamily: boolean } = {
         method, headers: requestHeaders, signal, agent: false, autoSelectFamily: false,
-        lookup: (_hostname, _options, callback) => callback(null, address.address, address.family),
+        family: address.family, lookup: createPinnedApiLookup(address),
       };
       const req = (url.protocol === "https:" ? httpsRequest : httpRequest)(url, options, response => {
         const chunks: Buffer[] = [];
