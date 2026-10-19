@@ -30,6 +30,18 @@ const highPriorityToolPaths = new Set([
   "/epoch-converter",
   "/url-converter",
   "/json-to-types",
+  "/age-calculator",
+  "/sip-calculator",
+  "/lumpsum-calculator",
+  "/emi-calculator",
+  "/income-tax-calculator",
+  "/gst-calculator",
+  "/compound-interest-calculator",
+  "/fd-calculator",
+  "/percentage-calculator",
+  "/date-calculator",
+  "/bmi-calculator",
+  "/unit-converter",
 ]);
 
 const categoryPaths = new Set([

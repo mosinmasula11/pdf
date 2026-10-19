@@ -20,6 +20,11 @@ export const metadata: Metadata = {
     "json formatter",
     "json to typescript",
     "zod schema generator",
+    "age calculator online",
+    "sip calculator online",
+    "lumpsum calculator",
+    "loan emi calculator",
+    "investment return calculator",
     "developer tools",
   ],
 };
