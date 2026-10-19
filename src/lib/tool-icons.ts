@@ -123,6 +123,7 @@ export const toolIcons: Record<string, LucideIcon> = {
   "jwt-debugger": ShieldCheck,
   "epoch-converter": Clock,
   "url-converter": Link2,
+  "json-to-types": Code2,
 };
 
 export function getToolIcon(id: string): LucideIcon {

@@ -57,7 +57,7 @@ const toolMenus = [
     label: "All utility tools",
     href: "/utility-tools",
     groups: [
-      { title: "Developer tools", toolIds: ["jwt-debugger", "api-client", "epoch-converter", "url-converter", "json-formatter"] },
+      { title: "Developer tools", toolIds: ["json-to-types", "jwt-debugger", "api-client", "epoch-converter", "url-converter", "json-formatter"] },
       { title: "Security & Keys", toolIds: ["api-key-generator", "password-generator", "qr-code-generator", "base64-converter"] },
       { title: "Text tools", toolIds: ["word-counter", "case-converter"] },
     ],

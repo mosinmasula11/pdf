@@ -4,7 +4,7 @@ import { ShieldCheck, Lock, FileText, CheckCircle2, AlertCircle, HelpCircle } fr
 import { siteConfig } from "@/lib/site-config";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy | Local File Processing & Optional Translation",
+  title: "Privacy Policy | Local Files, Translation & API Requests",
   description:
     "Learn how MSYN Tools protects your files and privacy. Full GDPR and CCPA compliant privacy policy with local in-browser file security.",
   alternates: {
@@ -52,7 +52,7 @@ export default function PrivacyPage() {
           </div>
           <h3 className="font-bold text-slate-900">Local Browser Processing</h3>
           <p className="mt-1 text-xs leading-5 text-slate-600">
-            Most tools execute in your browser. Translation sends extracted text to MyMemory only after you explicitly opt in.
+            Most tools execute in your browser. Translation sends opted-in text to MyMemory. The REST client sends requests to your chosen API, through our server when proxy mode is enabled.
           </p>
         </div>
 
@@ -108,6 +108,16 @@ export default function PrivacyPage() {
               <strong>Immediate Deletion:</strong> Because files are manipulated in-browser, closing or refreshing the tab clears all file buffers immediately from memory.
             </li>
           </ul>
+        </section>
+
+        <section>
+          <h2 className="text-2xl font-bold text-slate-900">REST API Client Requests and Saved Drafts</h2>
+          <p className="mt-2 text-sm leading-7">
+            Sending a request transmits its URL, enabled headers, authentication, and body to the API endpoint you choose. Proxy mode routes that request through our server; direct mode sends it from your browser. Responses are returned to your browser. The proxy does not write request or response contents to application storage.
+          </p>
+          <p className="mt-2 text-sm leading-7">
+            History and collections keep request drafts, including bodies, in this browser’s local storage. Authentication fields and custom header values are cleared in saved drafts, and recognized secret fields are redacted. Raw text can still contain sensitive data: review bodies before saving or sending them. Closing a tab does not erase saved drafts; use the history and collection controls to remove them.
+          </p>
         </section>
 
         <section>

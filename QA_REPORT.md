@@ -1,5 +1,24 @@
 # Tool testing and repairs — 18 October 2026
 
+## Added-tool browser pass
+
+The registry now contains **55 tools**. This pass tested the REST API Client plus all seven tools added since the original 47-tool audit, using synthetic data and the in-app browser.
+
+| Added tool | Browser result and repairs |
+| --- | --- |
+| REST API Client | All seven HTTP methods retested. Fixed Unicode Basic-auth crash, raw draft persistence, credential storage, stale params, history replacement, request/code parity, and proxy destination/redirect/timeout/size controls. Cancellation verified. See API_CLIENT_QA.md. |
+| API Key & Token Generator | API-key, UUID v4, HMAC secret, NanoID, and hex modes produced expected formats. 256-bit hex and 512-bit Base64URL lengths checked. Downloaded `.env` contained five valid named values. Fixed invalid environment-variable exports, unsafe prefix characters, and displayed template lengths; clarified that provider prefixes do not issue active provider credentials. |
+| JWT Debugger | Independently signed Unicode HS256 fixture verified; wrong secret rejected; malformed JWT reported. Fixed stale “Signature Verified” after changing the token/secret, strict object/UTF-8 parsing, missing epoch-zero claims, frozen claim clock, and invalid built-in sample signature. Signature verification does not imply valid application claims. |
+| Unix Timestamp Converter | Epoch zero gave 1970-01-01 UTC. Millisecond leap-day fixture gave 2024-02-29 and day 60. Invalid input reported; pause/resume and UTC date mode exercised. Fixed stale relative time, UTC/local initialization mismatch, DST-sensitive day counting, and leap-year total 365→366. Native date/time automation required keyboard commits; every timezone/DST combination was not browser-tested. |
+| URL Encoder & Param Editor | Unicode round trip, duplicate query parameters, disabled row, fragment, and malformed encoding tested. Fixed stale reconstructed URL after clearing/invalidating input, preserved relative URLs, and retained duplicates in JSON export. |
+| SVG to PNG/JPG | Downloaded PNG/JPEG decoded independently as 100×50. PNG alpha preserved; JPEG corner was opaque near white. Fixed height-only aspect ratio (previously 200×50), added visible aspect-ratio control, bounded dimensions, and guarded unsupported output formats. |
+| Image Converter | Two same-basename PNG/WebP inputs converted to PNG; downloaded ZIP contained both uniquely named files. Downloaded WebP decoded at 100×50 with alpha. Fixed filename collisions that would otherwise overwrite ZIP entries. |
+| Image to ICO/Favicon | Downloaded ICO independently parsed: six valid PNG frames at 16, 32, 48, 64, 128, and 256 pixels. ZIP contained matching favicon PNGs, ICO, Apple icon, and manifest; all manifest icon references existed. Prevented stale source reuse when loading a replacement image. |
+
+The full automated suite passes **52 tests**. Production build and TypeScript passed; the sandboxed build initially hit a Windows generated-folder permission error and succeeded outside the sandbox. Targeted API lint passed. Existing unrelated changes were preserved. This is functional coverage of the tested paths, not exhaustive certification of every option, browser, input format, or deployment configuration.
+
+The original 47-tool audit follows.
+
 ## Result
 
 All 47 advertised tool pages were checked in the in-app browser. The remaining primary workflows were exercised using synthetic PDFs, a form PDF, an image-only scanned invoice, images including WebP, and basic Office/CSV fixtures. Confirmed defects were repaired and retested. This is a basic functional audit, not certification of every input format or option.

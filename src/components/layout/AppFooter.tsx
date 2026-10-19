@@ -103,11 +103,11 @@ export function AppFooter() {
             </h3>
             <ul className="space-y-1 text-[11px] text-slate-400 sm:space-y-2 sm:text-xs">
               <li><Link href="/utility-tools" className="transition hover:text-white">All Utilities</Link></li>
+              <li><Link href="/json-to-types" className="transition hover:text-white">JSON to Types</Link></li>
               <li><Link href="/jwt-debugger" className="transition hover:text-white">JWT Debugger</Link></li>
               <li><Link href="/epoch-converter" className="transition hover:text-white">Unix Epoch</Link></li>
               <li><Link href="/url-converter" className="transition hover:text-white">URL Encoder</Link></li>
               <li><Link href="/api-key-generator" className="transition hover:text-white">API Key Gen</Link></li>
-              <li><Link href="/qr-code-generator" className="transition hover:text-white">QR Code</Link></li>
               <li><Link href="/api-client" className="transition hover:text-white">REST API Client</Link></li>
             </ul>
           </div>

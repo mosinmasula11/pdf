@@ -1,5 +1,30 @@
 # REST API Client test report
 
+## Repair and browser retest — 18 October 2026
+
+The failures in the original audit below have been repaired. The original findings are retained as historical evidence.
+
+- **Shared request compilation:** Send and all six code exports now use the same normalized URL, case-insensitive headers, authentication, and exact text/form/JSON body. Unicode Basic credentials use UTF-8. Invalid JSON produces an error before sending. Exported JavaScript and Axios code were executed against stubs to verify exact URL/body parity; other languages use correctly quoted string payloads.
+- **Persistence:** raw text survives save, reload, and restore. Authentication fields and custom header values are cleared before storage, including migration of existing drafts. Known secret query/form/JSON fields are redacted. Raw bodies remain stored locally and the UI/privacy policy disclose this. History retains separate chronological attempts, including different methods to the same URL.
+- **URL parameters:** removing a URL query clears its table. API-key query values are compiled before fragments without duplication. Presets reset authentication/body state.
+- **Proxy controls:** only public HTTP(S) destinations on ports 80/443; block private/reserved IPv4/IPv6 and mixed DNS results; pin the validated address to the actual connection; revalidate every redirect; block TLS downgrades and cross-origin body forwarding; strip cross-origin credentials and hop-by-hop headers. Same-origin browser requests, per-process concurrency/rate limits, a 512 KB input cap, 2 MB response cap, and a 30-second deadline are enforced. These per-process limits are basic abuse protection, not a distributed rate limiter.
+- **Cancellation and errors:** Cancel stops a pending request and shows `Request cancelled.` Proxy validation errors have a complete response shape so the UI can render them. Direct response reads are bounded. HTML previews have a restrictive CSP and isolated sandbox. Binary proxy responses are explicitly rejected rather than mislabeled as text.
+- **DELETE framing:** an additional live retest found missing DELETE request bodies after the transport change. The proxy now computes UTF-8 Content-Length itself. HTTPBin subsequently echoed the complete Unicode form payload for DELETE.
+
+### Browser checks after repairs
+
+GET, POST, PUT, PATCH, DELETE, HEAD, and OPTIONS all returned 200 from the public echo endpoint. POST with a Hindi Basic-auth username succeeded without crashing. The echoed form body and API-key query parameter matched the generated cURL command. Saving `QA raw payload`, reloading, and restoring retained the body and showed empty username/password fields. Separate method attempts remained visible in history. A delayed request was cancelled successfully. Loopback destination rejection and the final public request were also checked.
+
+### Automated verification
+
+The complete suite now has **52 passing tests**: 32 request compilation/export/storage/address checks, seven proxy transport/redirect/body/cancellation checks, four image dimension/name checks, and nine existing PDF/QR/data regression checks. Production compilation, TypeScript, and static generation passed. Targeted lint checks cover the API implementation and its tests.
+
+The proxy remains a public endpoint-testing feature; it can relay permitted public requests. Deployment-specific distributed abuse controls and infrastructure logging policies need separate review. Live cancellation was tested; the 30-second timeout and response caps are covered by implementation and cancellation/size tests rather than deliberately timing out or loading large public endpoints. Direct-browser CORS and local-network permissions still depend on the browser and target server.
+
+---
+
+## Original audit (before repairs)
+
 Tested on 18 October 2026 at `http://localhost:3000/api-client` using the in-app browser. Requests used public demo/echo endpoints and synthetic payloads and credentials. No application implementation was changed during this audit.
 
 ## Live checks

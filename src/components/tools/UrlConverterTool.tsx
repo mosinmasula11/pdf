@@ -28,6 +28,7 @@ export function UrlConverterTool() {
   const [urlInput, setUrlInput] = useState<string>(
     "https://api.example.com/v2/search?query=antigravity+ai&sort=relevance&limit=20&page=1&filter_active=true#results"
   );
+  const [isRelative, setIsRelative] = useState(false);
   const [protocol, setProtocol] = useState<string>("https:");
   const [host, setHost] = useState<string>("api.example.com");
   const [pathname, setPathname] = useState<string>("/v2/search");
@@ -69,6 +70,8 @@ export function UrlConverterTool() {
       }
 
       const parsed = new URL(parseable, "https://dummy.base");
+      if (!["http:", "https:"].includes(parsed.protocol) || parsed.username || parsed.password) throw new Error("Use an HTTP(S) URL without embedded credentials.");
+      setIsRelative(urlString.trim().startsWith("/"));
       setProtocol(parsed.protocol);
       setHost(parsed.host);
       setPathname(parsed.pathname);
@@ -94,6 +97,7 @@ export function UrlConverterTool() {
 
   // Rebuild URL whenever protocol, host, pathname, hash, or queryParams change
   useEffect(() => {
+    if (!urlInput.trim() || urlError) { setReconstructedUrl(""); return; }
     try {
       const searchParams = new URLSearchParams();
       queryParams.forEach((p) => {
@@ -103,14 +107,14 @@ export function UrlConverterTool() {
       });
 
       const queryString = searchParams.toString();
-      const base = `${protocol}//${host}${pathname.startsWith("/") ? pathname : "/" + pathname}`;
+      const base = `${isRelative ? "" : protocol + "//" + host}${pathname.startsWith("/") ? pathname : "/" + pathname}`;
       const full = `${base}${queryString ? `?${queryString}` : ""}${hash ? (hash.startsWith("#") ? hash : "#" + hash) : ""}`;
 
       setReconstructedUrl(full);
     } catch {
       setReconstructedUrl("");
     }
-  }, [protocol, host, pathname, hash, queryParams]);
+  }, [protocol, host, pathname, hash, queryParams, urlInput, urlError, isRelative]);
 
   // Tab 2: Raw Encoder / Decoder logic
   useEffect(() => {
@@ -164,10 +168,12 @@ export function UrlConverterTool() {
   };
 
   const exportParamsJson = () => {
-    const obj: Record<string, string> = {};
+    const obj: Record<string, string | string[]> = Object.create(null);
     queryParams.forEach((p) => {
       if (p.enabled && p.key.trim()) {
-        obj[p.key.trim()] = p.value;
+        const key = p.key.trim();
+        const previous = obj[key];
+        obj[key] = previous === undefined ? p.value : Array.isArray(previous) ? [...previous, p.value] : [previous, p.value];
       }
     });
     return JSON.stringify(obj, null, 2);
@@ -424,7 +430,7 @@ export function UrlConverterTool() {
                       ? "bg-slate-900 text-white shadow-sm"
                       : "text-slate-600 hover:text-slate-900"
                   }`}
-                  title="encodeURIComponent - Encodes all special characters including & = / ?"
+                  title="encodeURIComponent - Encodes all characters (: / ? & =)"
                 >
                   Component (URI Component)
                 </button>
@@ -436,12 +442,25 @@ export function UrlConverterTool() {
                       ? "bg-slate-900 text-white shadow-sm"
                       : "text-slate-600 hover:text-slate-900"
                   }`}
-                  title="encodeURI - Preserves full URL structure characters (: / ? & =)"
+                  title="encodeURI - Preserves https:// and slashes for address bar"
                 >
-                  Full URL (URI)
+                  Full URL (for Address Bar)
                 </button>
               </div>
             </div>
+          </div>
+
+          {/* Mode explanation banner */}
+          <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-xs text-slate-600">
+            {encodeLevel === "component" ? (
+              <p>
+                <strong>Component mode (<code className="text-violet-700">encodeURIComponent</code>):</strong> Encodes every special symbol (including <code className="text-rose-600">:</code> and <code className="text-rose-600">/</code>). Use this when passing a URL <em>inside</em> another URL parameter (like <code className="text-slate-800">?redirect=https%3A%2F%2Fmsyn.in</code>).
+              </p>
+            ) : (
+              <p>
+                <strong>Full URL mode (<code className="text-violet-700">encodeURI</code>):</strong> Preserves <code className="text-emerald-700">https://</code> and path slashes so it can be <strong>pasted directly into your browser address bar</strong> while safely encoding spaces and illegal symbols.
+              </p>
+            )}
           </div>
 
           {/* Input & Output Textareas */}

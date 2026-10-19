@@ -14,6 +14,7 @@ import {
   ZoomIn,
 } from "lucide-react";
 import { downloadBlob, formatBytes } from "@/lib/browser-utils";
+import { svgOutputSize, uniqueImageName } from "@/lib/image-output";
 
 type ConvertedSvg = {
   originalName: string;
@@ -72,24 +73,7 @@ export function SvgToPngTool() {
           const originalW = img.naturalWidth || 300;
           const originalH = img.naturalHeight || 150;
 
-          let targetW = Math.round(originalW * scale);
-          let targetH = Math.round(originalH * scale);
-
-          if (customWidth) {
-            const parsedW = parseInt(customWidth, 10);
-            if (!isNaN(parsedW) && parsedW > 0) {
-              targetW = parsedW;
-              if (maintainAspect) {
-                targetH = Math.round((originalH / originalW) * targetW);
-              }
-            }
-          }
-          if (customHeight && (!maintainAspect || !customWidth)) {
-            const parsedH = parseInt(customHeight, 10);
-            if (!isNaN(parsedH) && parsedH > 0) {
-              targetH = parsedH;
-            }
-          }
+          const { width: targetW, height: targetH } = svgOutputSize(originalW, originalH, scale, customWidth, customHeight, maintainAspect);
 
           const canvas = document.createElement("canvas");
           canvas.width = targetW;
@@ -129,6 +113,7 @@ export function SvgToPngTool() {
             );
           });
 
+          if (blob.type !== outputFormat) throw new Error("This browser does not support the selected output format.");
           const ext = outputFormat === "image/jpeg" ? "jpg" : outputFormat === "image/webp" ? "webp" : "png";
           const baseName = file.name.replace(/\.[^/.]+$/, "");
           const outputName = `${baseName}.${ext}`;
@@ -165,8 +150,10 @@ export function SvgToPngTool() {
 
     try {
       const convertedList: ConvertedSvg[] = [];
+      const usedNames = new Set<string>();
       for (const file of files) {
         const item = await convertSvgFile(file);
+        item.outputName = uniqueImageName(item.outputName, usedNames);
         convertedList.push(item);
       }
       setResults(convertedList);
@@ -302,6 +289,7 @@ export function SvgToPngTool() {
               {/* Custom Pixel Dimensions */}
               <div className="space-y-1.5 pt-2 border-t border-slate-100">
                 <label className="text-xs font-semibold text-slate-700">Custom Dimensions (Optional)</label>
+                  <label className="flex items-center gap-2 text-xs text-slate-600"><input type="checkbox" checked={maintainAspect} onChange={e => setMaintainAspect(e.target.checked)} />Maintain aspect ratio</label>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <span className="text-[11px] text-slate-500">Width (px)</span>

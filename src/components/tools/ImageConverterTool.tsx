@@ -12,6 +12,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { downloadBlob, formatBytes } from "@/lib/browser-utils";
+import { uniqueImageName } from "@/lib/image-output";
 
 type SupportedTarget = "image/jpeg" | "image/png" | "image/webp";
 
@@ -106,6 +107,7 @@ export function ImageConverterTool() {
       );
     });
 
+    if (blob.type !== targetFormat) throw new Error("This browser does not support the selected output format.");
     const ext = targetFormat === "image/jpeg" ? "jpg" : targetFormat === "image/webp" ? "webp" : "png";
     const baseName = file.name.replace(/\.[^/.]+$/, "");
     const outputName = `${baseName}.${ext}`;
@@ -129,8 +131,10 @@ export function ImageConverterTool() {
 
     try {
       const convertedList: ConvertedFile[] = [];
+      const usedNames = new Set<string>();
       for (const f of files) {
         const res = await convertSingle(f);
+        res.outputName = uniqueImageName(res.outputName, usedNames);
         convertedList.push(res);
       }
       setResults(convertedList);

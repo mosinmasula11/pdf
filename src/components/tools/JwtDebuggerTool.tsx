@@ -22,28 +22,19 @@ function base64UrlDecode(str: string): string {
     while (base64.length % 4) {
       base64 += "=";
     }
+    if (!/^[A-Za-z0-9_-]+$/.test(str)) throw new Error("Invalid Base64Url encoding");
     const binary = atob(base64);
     const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
-    return new TextDecoder().decode(bytes);
+    return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
   } catch {
     throw new Error("Invalid Base64Url encoding");
   }
 }
 
-// Convert ArrayBuffer to Base64Url string
-function bufferToBase64Url(buffer: ArrayBuffer): string {
-  const bytes = new Uint8Array(buffer);
-  let binary = "";
-  for (let i = 0; i < bytes.byteLength; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
-
 const SAMPLE_JWT =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9." +
   "eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkFsZXggSm9obnNvbiIsImVtYWlsIjoiYWxleEBleGFtcGxlLmNvbSIsInJvbGVzIjpbImFkbWluIiwidXNlciJdLCJpYXQiOjE3MTY4NzYwMDAsImV4cCI6MTc4OTk5OTAwMH0." +
-  "4LhS71mXf4f5fA6L2x7fG5h9_9L0z8v1pQ2r3t4u5v8";
+  "R2jQiJqtEI_cItkzgvE1YOnyRovZJRFfwxFSFR7Gv7k";
 
 export function JwtDebuggerTool() {
   const [tokenInput, setTokenInput] = useState<string>(SAMPLE_JWT);
@@ -58,13 +49,16 @@ export function JwtDebuggerTool() {
   const [payloadObj, setPayloadObj] = useState<Record<string, unknown> | null>(null);
 
   const [error, setError] = useState<string | null>(null);
-  const [signatureValid, setSignatureValid] = useState<boolean | null>(null);
+  const [verification, setVerification] = useState<{ token: string; secret: string; valid: boolean } | null>(null);
+  const signatureValid = verification?.token === tokenInput.trim() && verification.secret === secretKey ? verification.valid : null;
   const [verifying, setVerifying] = useState<boolean>(false);
   const [copiedSection, setCopiedSection] = useState<string | null>(null);
   const [currentNow, setCurrentNow] = useState<number | null>(null);
 
   useEffect(() => {
-    setCurrentNow(Date.now());
+    const timer = setInterval(() => setCurrentNow(Date.now()), 1000);
+    queueMicrotask(() => setCurrentNow(Date.now()));
+    return () => clearInterval(timer);
   }, []);
 
   // Parse token whenever input changes
@@ -77,7 +71,7 @@ export function JwtDebuggerTool() {
       setHeaderObj(null);
       setPayloadObj(null);
       setError(null);
-      setSignatureValid(null);
+      setVerification(null);
       return;
     }
 
@@ -89,7 +83,7 @@ export function JwtDebuggerTool() {
       setSignatureStr("");
       setHeaderObj(null);
       setPayloadObj(null);
-      setSignatureValid(null);
+      setVerification(null);
       return;
     }
 
@@ -100,12 +94,15 @@ export function JwtDebuggerTool() {
 
     try {
       const decodedH = base64UrlDecode(h);
+      if (tokenInput.length > 100_000) throw new Error("JWT exceeds the 100 KB limit.");
       const parsedH = JSON.parse(decodedH);
+      if (!parsedH || typeof parsedH !== "object" || Array.isArray(parsedH)) throw new Error("JWT header must be a JSON object.");
       setHeaderJson(JSON.stringify(parsedH, null, 2));
       setHeaderObj(parsedH);
 
       const decodedP = base64UrlDecode(p);
       const parsedP = JSON.parse(decodedP);
+      if (!parsedP || typeof parsedP !== "object" || Array.isArray(parsedP)) throw new Error("JWT payload must be a JSON object.");
       setPayloadJson(JSON.stringify(parsedP, null, 2));
       setPayloadObj(parsedP);
 
@@ -122,16 +119,18 @@ export function JwtDebuggerTool() {
   // Verify Signature for HS256
   const verifySignature = async () => {
     if (!headerRaw || !payloadRaw || !signatureStr || !secretKey) {
-      setSignatureValid(null);
+      setVerification(null);
       return;
     }
 
-    const alg = (headerObj?.alg as string) || "HS256";
+    const alg = headerObj?.alg;
     if (alg !== "HS256") {
-      setSignatureValid(null);
+      setVerification(null);
       return;
     }
 
+    const verifiedToken = tokenInput.trim();
+    const verifiedSecret = secretKey;
     setVerifying(true);
     try {
       const enc = new TextEncoder();
@@ -141,16 +140,16 @@ export function JwtDebuggerTool() {
         keyData,
         { name: "HMAC", hash: "SHA-256" },
         false,
-        ["sign"]
+        ["verify"]
       );
 
-      const dataToSign = enc.encode(`${headerRaw}.${payloadRaw}`);
-      const computedSigBuffer = await crypto.subtle.sign("HMAC", key, dataToSign);
-      const computedSigB64 = bufferToBase64Url(computedSigBuffer);
-
-      setSignatureValid(computedSigB64 === signatureStr);
+      const [h, p, signature] = verifiedToken.split(".");
+      if (!/^[A-Za-z0-9_-]+$/.test(signature)) throw new Error("Invalid signature encoding.");
+      const signatureBytes = Uint8Array.from(atob(signature.replace(/-/g, "+").replace(/_/g, "/")), c => c.charCodeAt(0));
+      const valid = await crypto.subtle.verify("HMAC", key, signatureBytes, enc.encode(h + "." + p));
+      setVerification({ token: verifiedToken, secret: verifiedSecret, valid });
     } catch {
-      setSignatureValid(false);
+      setVerification({ token: verifiedToken, secret: verifiedSecret, valid: false });
     } finally {
       setVerifying(false);
     }
@@ -164,7 +163,7 @@ export function JwtDebuggerTool() {
 
   // Human date formatting for JWT timestamps (seconds)
   const formatJwtDate = (epochSec?: unknown): { date: string; relative: string; isExpired?: boolean } => {
-    if (typeof epochSec !== "number") return { date: "Invalid", relative: "" };
+    if (typeof epochSec !== "number" || !Number.isFinite(epochSec) || !Number.isFinite(new Date(epochSec * 1000).getTime())) return { date: "Invalid", relative: "" };
     const date = new Date(epochSec * 1000);
     const now = currentNow ?? date.getTime();
     const diffSec = currentNow !== null ? Math.round((date.getTime() - now) / 1000) : 0;
@@ -193,9 +192,9 @@ export function JwtDebuggerTool() {
     };
   };
 
-  const expInfo = payloadObj?.exp ? formatJwtDate(payloadObj.exp) : null;
-  const iatInfo = payloadObj?.iat ? formatJwtDate(payloadObj.iat) : null;
-  const nbfInfo = payloadObj?.nbf ? formatJwtDate(payloadObj.nbf) : null;
+  const expInfo = payloadObj && Object.hasOwn(payloadObj, "exp") ? formatJwtDate(payloadObj.exp) : null;
+  const iatInfo = payloadObj && Object.hasOwn(payloadObj, "iat") ? formatJwtDate(payloadObj.iat) : null;
+  const nbfInfo = payloadObj && Object.hasOwn(payloadObj, "nbf") ? formatJwtDate(payloadObj.nbf) : null;
 
   return (
     <div className="space-y-6">
@@ -209,7 +208,7 @@ export function JwtDebuggerTool() {
             100% Private Client-Side JWT Debugger
           </h3>
           <p className="text-xs text-emerald-800">
-            Tokens, payloads, and secrets never leave your browser. Zero server transmission. Safe for production tokens and sensitive user credentials.
+            Tokens and secrets are processed locally. A valid signature does not validate the issuer, audience, expiry, or application permissions.
           </p>
         </div>
       </div>

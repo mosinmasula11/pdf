@@ -1,6 +1,7 @@
 import { lookup } from "node:dns/promises";
 import { BlockList, isIP } from "node:net";
 import { request as httpRequest } from "node:http";
+import type { RequestOptions } from "node:http";
 import { request as httpsRequest } from "node:https";
 import { API_METHODS, API_RESPONSE_LIMIT, parseApiUrl } from "./api-request";
 
@@ -58,10 +59,13 @@ export async function callPublicApi(input: ProxyInput, signal: AbortSignal) {
     const address = await resolveApiDestination(url, signal);
     const result = await new Promise<{ status: number; statusText: string; headers: Record<string, string>; data: Buffer }>((resolve, reject) => {
       // Pin the validated address, retaining the original Host and TLS hostname.
-      const req = (url.protocol === "https:" ? httpsRequest : httpRequest)(url, {
-        method, headers, signal, agent: false,
+      const requestHeaders = { ...headers };
+      if (body !== null && !["GET", "HEAD"].includes(method)) requestHeaders["content-length"] = String(Buffer.byteLength(body, "utf8"));
+      const options: RequestOptions & { autoSelectFamily: boolean } = {
+        method, headers: requestHeaders, signal, agent: false, autoSelectFamily: false,
         lookup: (_hostname, _options, callback) => callback(null, address.address, address.family),
-      }, response => {
+      };
+      const req = (url.protocol === "https:" ? httpsRequest : httpRequest)(url, options, response => {
         const chunks: Buffer[] = [];
         let size = 0;
         response.on("data", (chunk: Buffer) => {
@@ -88,6 +92,7 @@ export async function callPublicApi(input: ProxyInput, signal: AbortSignal) {
       const next = parseApiUrl(new URL(result.headers.location, url).toString());
       if (url.protocol === "https:" && next.protocol !== "https:") throw new Error("HTTPS to HTTP redirects are blocked.");
       if (next.origin !== url.origin) {
+        if (body !== null) throw new Error("Cross-origin redirects with a request body are blocked. Send directly to the intended endpoint.");
         headers = Object.fromEntries(Object.entries(headers).filter(([key]) => ["accept", "accept-language", "content-type", "accept-encoding"].includes(key.toLowerCase())));
       }
       if ((result.status === 303 && method !== "HEAD") || ([301, 302].includes(result.status) && method === "POST")) {

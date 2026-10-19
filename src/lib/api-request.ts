@@ -86,7 +86,7 @@ export function sanitizeApiRequest<T extends ApiRequestConfig & { params: ApiRow
   try { bodyJson = JSON.stringify(redactJson(JSON.parse(bodyJson)), null, 2); } catch { /* Keep invalid drafts. */ }
   return {
     ...item, url, bearerToken: "", basicUser: "", basicPass: "", apiKeyValue: "",
-    params: (item.params || []).map(row => ({ ...row, value: secretKey.test(row.key) || row.key === item.apiKeyName ? "" : row.value })),
+    params: (item.params || []).map(row => ({ ...row, value: secretKey.test(row.key) || (item.authType === "apikey" && row.key === item.apiKeyName) ? "" : row.value })),
     headers: (item.headers || []).map(row => ({ ...row, value: safeHeader.test(row.key) ? row.value : "" })),
     bodyFormData: (item.bodyFormData || []).map(row => ({ ...row, value: secretKey.test(row.key) ? "" : row.value })),
     bodyRaw: item.bodyRaw || "", bodyJson,
@@ -122,7 +122,7 @@ export function apiSnippet(config: ApiRequestConfig, language: string) {
   const entries = Object.entries(request.headers);
   const hasBody = request.body !== null;
   switch (language) {
-    case "curl": return [`curl --request ${request.method} ${shell(request.url)}`, ...entries.map(([k,v]) => `  --header ${shell(`${k}: ${v}`)}`), ...(hasBody ? [`  --data-raw ${shell(request.body!)}`] : [])].join(" \\\n");
+    case "curl": return [`curl ${request.method === "HEAD" ? "--head" : `--request ${request.method}`} --max-time 30 ${shell(request.url)}`, ...entries.map(([k,v]) => `  --header ${shell(`${k}: ${v}`)}`), ...(hasBody ? [`  --data-raw ${shell(request.body!)}`] : [])].join(" \\\n");
     case "js": return `fetch(${q(request.url)}, {\n  method: ${q(request.method)},\n  headers: ${q(request.headers)},${hasBody ? `\n  body: ${q(request.body)},` : ""}\n})\n  .then(response => response.text())\n  .then(console.log)\n  .catch(console.error);`;
     case "node": return `const axios = require("axios");\naxios({\n  method: ${q(request.method)},\n  url: ${q(request.url)},\n  headers: ${q(request.headers)},${hasBody ? `\n  data: ${q(request.body)},\n  transformRequest: [(data) => data],` : ""}\n}).then(response => console.log(response.data)).catch(console.error);`;
     case "python": return `import requests\n\nresponse = requests.request(\n    ${q(request.method)}, ${q(request.url)},\n    headers=${q(request.headers)},${hasBody ? `\n    data=${q(request.body)}.encode("utf-8"),` : ""}\n    timeout=30,\n)\nprint(response.status_code)\nprint(response.text)`;

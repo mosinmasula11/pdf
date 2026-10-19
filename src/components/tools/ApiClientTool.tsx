@@ -169,6 +169,9 @@ export function ApiClientTool() {
   };
 
   useEffect(() => {
+    let mounted = true;
+    queueMicrotask(() => {
+    if (!mounted) return;
     for (const [key, setter] of [
       ["msyn_api_client_history", setHistory], ["msyn_api_client_saved", setSavedRequests],
     ] as const) {
@@ -179,7 +182,8 @@ export function ApiClientTool() {
         localStorage.setItem(key, JSON.stringify(items));
       } catch { setStorageNotice("Some saved requests could not be loaded. Browser storage may be unavailable."); }
     }
-    return () => { requestController.current?.abort(); };
+    });
+    return () => { mounted = false; requestController.current?.abort(); };
   }, []);
 
   // Update URL when params change
@@ -214,7 +218,7 @@ export function ApiClientTool() {
     syncUrlWithParams(updated);
   };
 
-  const updateParamRow = (id: string, field: "key" | "value" | "enabled", val: any) => {
+  const updateParamRow = (id: string, field: "key" | "value" | "enabled", val: string | boolean) => {
     const updated = params.map((p) => (p.id === id ? { ...p, [field]: val } : p));
     setParams(updated);
     syncUrlWithParams(updated);
@@ -229,7 +233,7 @@ export function ApiClientTool() {
     setHeaders(headers.filter((h) => h.id !== id));
   };
 
-  const updateHeaderRow = (id: string, field: "key" | "value" | "enabled", val: any) => {
+  const updateHeaderRow = (id: string, field: "key" | "value" | "enabled", val: string | boolean) => {
     setHeaders(headers.map((h) => (h.id === id ? { ...h, [field]: val } : h)));
   };
 
@@ -239,8 +243,8 @@ export function ApiClientTool() {
       const parsed = JSON.parse(bodyJson);
       setBodyJson(JSON.stringify(parsed, null, 2));
       setJsonError(null);
-    } catch (e: any) {
-      setJsonError("Invalid JSON syntax: " + e.message);
+    } catch (e: unknown) {
+      setJsonError("Invalid JSON syntax: " + (e instanceof Error ? e.message : "Invalid JSON"));
     }
   };
 
@@ -347,7 +351,7 @@ export function ApiClientTool() {
     e.stopPropagation();
     const updated = savedRequests.filter((r) => r.id !== id);
     setSavedRequests(updated);
-    localStorage.setItem("msyn_api_client_saved", JSON.stringify(updated));
+    persistRequests("msyn_api_client_saved", updated);
   };
 
   const clearHistory = () => {
@@ -370,7 +374,7 @@ export function ApiClientTool() {
     } catch {
       return response.data;
     }
-  }, [response?.data]);
+  }, [response]);
 
   return (
     <div className="flex flex-col gap-6 lg:flex-row">
@@ -542,7 +546,7 @@ export function ApiClientTool() {
             </div>
           </div>
 
-          <p className="text-xs text-slate-500" role="note">Requests time out after 30 seconds. The proxy accepts public HTTP(S) endpoints only. Use direct mode for local APIs. History and collections save request bodies locally; authentication values and custom header values are cleared when saved.</p>
+          <p className="text-xs text-slate-500" role="note">Proxy mode sends your request through our server to the chosen public API. Direct mode sends it from your browser and supports local APIs where browser permissions allow. Requests time out after 30 seconds. History and collections save request bodies locally; authentication values and custom header values are cleared when saved.</p>
           {storageNotice && <p role="status" className="text-xs text-amber-700">{storageNotice}</p>}
           {/* URL & Method Input Bar */}
           <div className="flex flex-col gap-2 sm:flex-row">
@@ -608,7 +612,7 @@ export function ApiClientTool() {
               <button
                 key={tab.id}
                 type="button"
-                onClick={() => setActiveReqTab(tab.id as any)}
+                onClick={() => setActiveReqTab(tab.id as typeof activeReqTab)}
                 className={`flex items-center gap-1.5 border-b-2 px-4 py-3 text-xs font-semibold transition ${
                   activeReqTab === tab.id
                     ? "border-violet-600 text-violet-700 bg-white"
@@ -732,7 +736,7 @@ export function ApiClientTool() {
                     <button
                       key={a.id}
                       type="button"
-                      onClick={() => setAuthType(a.id as any)}
+                      onClick={() => setAuthType(a.id as typeof authType)}
                       className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
                         authType === a.id
                           ? "bg-violet-600 text-white"
@@ -810,7 +814,7 @@ export function ApiClientTool() {
                       <label className="block text-xs font-semibold text-slate-700 mb-1">Add To</label>
                       <select
                         value={apiKeyPlacement}
-                        onChange={(e) => setApiKeyPlacement(e.target.value as any)}
+                        onChange={(e) => setApiKeyPlacement(e.target.value as typeof apiKeyPlacement)}
                         className="w-full rounded-xl border border-slate-200 p-2.5 text-xs text-slate-800 outline-none"
                       >
                         <option value="header">Header</option>
@@ -839,7 +843,7 @@ export function ApiClientTool() {
                     <button
                       key={b.id}
                       type="button"
-                      onClick={() => setBodyType(b.id as any)}
+                      onClick={() => setBodyType(b.id as typeof bodyType)}
                       className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
                         bodyType === b.id
                           ? "bg-violet-600 text-white"
@@ -959,7 +963,7 @@ export function ApiClientTool() {
                       <button
                         key={lang.id}
                         type="button"
-                        onClick={() => setCodeLang(lang.id as any)}
+                        onClick={() => setCodeLang(lang.id as typeof codeLang)}
                         className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
                           codeLang === lang.id
                             ? "bg-violet-600 text-white"
@@ -1067,7 +1071,7 @@ export function ApiClientTool() {
                   <button
                     key={t.id}
                     type="button"
-                    onClick={() => setActiveRespTab(t.id as any)}
+                    onClick={() => setActiveRespTab(t.id as typeof activeRespTab)}
                     className={`border-b-2 px-3 py-2 text-xs font-semibold transition ${
                       activeRespTab === t.id
                         ? "border-violet-600 text-violet-700"

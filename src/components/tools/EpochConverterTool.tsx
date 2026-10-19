@@ -47,19 +47,19 @@ export function EpochConverterTool() {
     const now = new Date();
     const ms = now.getTime();
     setCurrentEpochMs(ms);
-    setDateInput(now.toISOString().slice(0, 10));
+    setDateInput(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`);
     setTimeInput(now.toTimeString().slice(0, 8));
     setEpochInput(Math.floor(ms / 1000).toString());
   }, []);
 
   // Live Clock Interval
   useEffect(() => {
-    if (isLivePaused || currentEpochMs === null) return;
+    if (isLivePaused) return;
     const interval = setInterval(() => {
       setCurrentEpochMs(Date.now());
     }, 100);
     return () => clearInterval(interval);
-  }, [isLivePaused, currentEpochMs]);
+  }, [isLivePaused]);
 
   // Compute Epoch to Date whenever epochInput changes
   useEffect(() => {
@@ -103,8 +103,7 @@ export function EpochConverterTool() {
     }
 
     // Day of year
-    const startOfYear = new Date(date.getFullYear(), 0, 1);
-    const dayOfYear = Math.floor((date.getTime() - startOfYear.getTime()) / 86400000) + 1;
+    const dayOfYear = Math.floor((Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) - Date.UTC(date.getFullYear(), 0, 1)) / 86400000) + 1;
 
     // Day of week
     const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -123,7 +122,7 @@ export function EpochConverterTool() {
       dayOfWeek,
       isLeapYear,
     });
-  }, [epochInput]);
+  }, [epochInput, currentEpochMs]);
 
   // Compute Date to Epoch whenever date, time or dateTz changes
   useEffect(() => {
@@ -380,7 +379,7 @@ export function EpochConverterTool() {
                   Day: <strong className="text-slate-800">{epochResult.dayOfWeek}</strong>
                 </div>
                 <div>
-                  Day #{epochResult.dayOfYear} of 365
+                  Day #{epochResult.dayOfYear} of {epochResult.isLeapYear ? 366 : 365}
                 </div>
                 <div>
                   {epochResult.isLeapYear ? "Leap Year" : "Regular Year"}

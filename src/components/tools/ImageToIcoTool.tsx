@@ -72,6 +72,7 @@ export function ImageToIcoTool() {
 
     setError(null);
     setResult(null);
+    setSourceImage(null);
     setSelectedFile(file);
 
     const reader = new FileReader();

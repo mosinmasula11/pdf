@@ -702,6 +702,18 @@ export const toolRegistry: ToolDefinition[] = [
     metaDescription: "Encode and decode URLs, parse query parameters into editable tables, and build clean URLs directly in your browser.",
     status: "working",
   },
+  {
+    id: "json-to-types",
+    name: "JSON to TypeScript & Zod",
+    description: "Convert JSON payloads into clean TypeScript interfaces, Zod validation schemas, Pydantic models, or Go structs.",
+    category: "Utilities",
+    subcategory: "Utilities",
+    path: "/json-to-types",
+    supportedFormats: ["JSON", "TypeScript", "Zod"],
+    seoTitle: "JSON to TypeScript & Zod Schema Generator Online | Free Converter",
+    metaDescription: "Convert JSON into TypeScript interfaces, Zod schemas, Python Pydantic models, and Go structs with type inference in your browser.",
+    status: "working",
+  },
 ];
 
 export const availableTools = toolRegistry;

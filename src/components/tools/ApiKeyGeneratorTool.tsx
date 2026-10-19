@@ -19,6 +19,7 @@ type KeyType = "apikey" | "uuid" | "jwt" | "nanoid" | "hex";
 const BASE62_CHARS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 const BASE64URL_CHARS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-_";
 const HEX_CHARS = "0123456789abcdef";
+const PREFIX_TEMPLATES: Record<string, string> = { stripe_sec: "sk_live_", stripe_pub: "pk_live_", github: "ghp_", openai: "sk-proj-", aws: "AKIA" };
 
 function getRandomBytes(length: number): Uint8Array {
   const bytes = new Uint8Array(length);
@@ -70,6 +71,7 @@ export function ApiKeyGeneratorTool() {
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const [copiedAll, setCopiedAll] = useState(false);
   const [envVarName, setEnvVarName] = useState("API_KEY");
+  const validEnvName = /^[A-Z_][A-Z0-9_]*$/.test(envVarName);
 
   // Generate single token based on active mode
   const generateSingleKey = useCallback((): string => {
@@ -170,6 +172,7 @@ export function ApiKeyGeneratorTool() {
 
   // Download .env format
   const handleDownloadEnv = () => {
+    if (!validEnvName) return;
     const lines = generatedKeys.map((k, i) =>
       generatedKeys.length === 1 ? `${envVarName}=${k}` : `${envVarName}_${i + 1}=${k}`
     );
@@ -281,9 +284,11 @@ export function ApiKeyGeneratorTool() {
               </label>
               <input
                 type="text"
-                value={customPrefix}
-                onChange={(e) => setCustomPrefix(e.target.value)}
+                value={PREFIX_TEMPLATES[prefixPreset] ?? customPrefix}
+                disabled={prefixPreset !== "custom"}
+                onChange={(e) => setCustomPrefix(e.target.value.replace(/[^A-Za-z0-9_.-]/g, ""))}
                 placeholder="e.g. app_secret_"
+                title="Use letters, numbers, dots, underscores, or hyphens."
                 className="w-full rounded-xl border border-slate-200 p-2.5 font-mono text-xs text-slate-800 outline-none focus:border-violet-500"
               />
             </div>
@@ -307,7 +312,7 @@ export function ApiKeyGeneratorTool() {
             <div className="sm:col-span-2 lg:col-span-3">
               <div className="flex items-center justify-between text-xs font-semibold text-slate-700 mb-2">
                 <span>Random Token Length: <strong className="text-violet-600">{keyLength} chars</strong></span>
-                <span className="text-slate-400">Total length: {customPrefix.length + keyLength} chars</span>
+                <span className="text-slate-400">Total length: {(PREFIX_TEMPLATES[prefixPreset] ?? customPrefix).length + keyLength} chars</span>
               </div>
               <input
                 type="range"
@@ -472,6 +477,7 @@ export function ApiKeyGeneratorTool() {
           <button
             type="button"
             onClick={handleDownloadEnv}
+            disabled={!validEnvName || !generatedKeys.length}
             className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
             title="Download formatted for .env file"
           >
@@ -488,6 +494,8 @@ export function ApiKeyGeneratorTool() {
         </div>
       </div>
 
+      {!validEnvName && <p role="alert" className="text-sm text-rose-700">Use an environment variable name starting with a letter or underscore.</p>}
+      <p className="text-xs text-slate-500">Provider prefixes are examples only. These random strings do not create active credentials with Stripe, GitHub, OpenAI, or AWS.</p>
       {/* Generated Output List */}
       <div className="space-y-2.5">
         {generatedKeys.map((item, idx) => (

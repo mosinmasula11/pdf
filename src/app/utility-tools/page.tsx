@@ -18,6 +18,8 @@ export const metadata: Metadata = {
     "api key generator",
     "qr code generator",
     "json formatter",
+    "json to typescript",
+    "zod schema generator",
     "developer tools",
   ],
 };

@@ -29,6 +29,7 @@ const highPriorityToolPaths = new Set([
   "/jwt-debugger",
   "/epoch-converter",
   "/url-converter",
+  "/json-to-types",
 ]);
 
 const categoryPaths = new Set([
