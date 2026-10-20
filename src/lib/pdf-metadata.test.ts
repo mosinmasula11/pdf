@@ -1,6 +1,27 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
+vi.mock("./pdfjs-helper", () => ({getPdfJs: async () => ({getDocument: () => ({promise: Promise.resolve({getMetadata:async()=>({info:{Title:"Protected fixture",Author:"Test author"}})}),destroy:async()=>{}})})}));
 import { PDFDocument } from "@cantoo/pdf-lib";
-import { extractPdfMetadata, restoreOriginalPdfMetadata, stripPdfMetadata } from "./pdf-metadata";
+import { extractPdfMetadata, restoreOriginalPdfMetadata, stripPdfMetadata, readPdfProperties, writePdfProperties } from "./pdf-metadata";
+import {protectPdfBytes} from "./pdf-security";
+
+describe("password-authenticated metadata editor", () => {
+  it("reads encrypted metadata only with the correct password and exports an edited copy", async () => {
+    const doc = await PDFDocument.create(); doc.addPage(); doc.setTitle("Protected fixture"); doc.setAuthor("Test author");
+    const encrypted = await protectPdfBytes(await doc.save(), "fixture-only", {restrictPrinting:false,restrictCopying:false});
+    await expect(readPdfProperties(encrypted)).rejects.toThrow();
+    await expect(readPdfProperties(encrypted,"wrong")).rejects.toThrow();
+    const properties = await readPdfProperties(encrypted,"fixture-only");
+    expect(properties.title).toBe("Protected fixture");
+    const output = await writePdfProperties(encrypted,{...properties,title:"Updated fixture"},false,"fixture-only");
+    expect((await readPdfProperties(output)).title).toBe("Updated fixture");
+    expect((await readPdfProperties(encrypted,"fixture-only")).title).toBe("Protected fixture");
+  });
+  it("returns empty fields instead of values from a previous PDF", async () => {
+    const doc = await PDFDocument.create(); doc.addPage();
+    const values = await readPdfProperties(await doc.save());
+    expect(values.title).toBe(""); expect(values.author).toBe(""); expect(values.subject).toBe("");
+  });
+});
 
 describe("pdf-metadata extraction and restoration", () => {
   it("restores original PDF metadata onto verified target PDF", async () => {
@@ -15,7 +36,7 @@ describe("pdf-metadata extraction and restoration", () => {
     orig.setKeywords(["aadhaar", "e-sign", "verified"]);
     const origDate = new Date("2024-01-15T10:30:00Z");
     orig.setCreationDate(origDate);
-    const origBytes = await orig.save({ updateMetadata: false });
+    const origBytes = await orig.save();
 
     // 2. Create target PDF with no metadata
     const target = await PDFDocument.create();

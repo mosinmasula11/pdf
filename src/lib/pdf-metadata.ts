@@ -13,8 +13,27 @@ export interface ExtractedPdfMetadata {
   modificationDate?: Date;
 }
 
-export async function writePdfProperties(bytes: ArrayBuffer | Uint8Array, values: DocumentProperties, wipe = false) {
-  const document = await PDFDocument.load(bytes, { updateMetadata: false });
+export async function readPdfProperties(bytes: ArrayBuffer | Uint8Array, password = ""): Promise<DocumentProperties> {
+  const encrypted = (await PDFDocument.load(bytes, {ignoreEncryption:true,updateMetadata:false})).isEncrypted;
+  const document = await PDFDocument.load(bytes, { password, updateMetadata: false });
+  if (encrypted) {
+    const {getPdfJs} = await import("./pdfjs-helper");
+    const pdfjs = await getPdfJs();
+    const task = pdfjs.getDocument({data: new Uint8Array(bytes).slice(), password, enableXfa:false});
+    try {
+      const pdf = await task.promise;
+      const {info} = await pdf.getMetadata();
+      const values = info as Record<string, unknown>;
+      const text = (key:string) => typeof values[key] === "string" ? values[key] as string : "";
+      return {title:text("Title"),author:text("Author"),subject:text("Subject"),keywords:text("Keywords"),creator:text("Creator"),producer:text("Producer")};
+    } finally { await task.destroy(); }
+  }
+  return {title: document.getTitle() || "", author: document.getAuthor() || "", subject: document.getSubject() || "", keywords: document.getKeywords() || "", creator: document.getCreator() || "", producer: document.getProducer() || ""};
+}
+
+export async function writePdfProperties(bytes: ArrayBuffer | Uint8Array, values: DocumentProperties, wipe = false, password = "") {
+  const document = await PDFDocument.load(bytes, { password, updateMetadata: false });
+  document.context.trailerInfo.Encrypt = undefined;
   const metadata = document.catalog.get(PDFName.of("Metadata"));
   if (metadata instanceof PDFRef) document.context.delete(metadata);
   document.catalog.delete(PDFName.of("Metadata"));
@@ -184,5 +203,5 @@ export async function restoreOriginalPdfMetadata(
   if (metadata.creationDate) targetDoc.setCreationDate(metadata.creationDate);
   if (metadata.modificationDate) targetDoc.setModificationDate(metadata.modificationDate);
 
-  return await targetDoc.save({ updateMetadata: false });
+  return await targetDoc.save();
 }
