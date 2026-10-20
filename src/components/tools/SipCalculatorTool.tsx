@@ -1,5 +1,8 @@
 "use client";
 
+import { FormattedNumberInput } from "./FormattedNumberInput";
+import { useCurrencyFormat } from "./CurrencyFormat";
+
 import { useState } from "react";
 import { boundedYears, calculatorError, loanRepayment, recurringFutureValue } from "@/lib/calculator-math";
 import {
@@ -27,6 +30,7 @@ export function formatIndianCurrency(num: number): string {
 
 export function SipCalculatorTool({ defaultType = "sip" }: { defaultType?: CalculatorType }) {
   const [calcType, setCalcType] = useState<CalculatorType>(defaultType);
+  const { money: formatIndianCurrency, symbol } = useCurrencyFormat(calcType === "ppf" || calcType === "gst");
 
   // SIP States
   const [monthlyInvestment, setMonthlyInvestment] = useState<number>(25000);
@@ -295,8 +299,8 @@ export function SipCalculatorTool({ defaultType = "sip" }: { defaultType?: Calcu
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-semibold text-slate-700">Monthly investment</label>
                     <div className="flex items-center rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 font-bold text-sm text-violet-700">
-                      <span>₹</span>
-                      <input
+<span>{symbol}</span>
+<FormattedNumberInput
                         type="number"
                         aria-label="Monthly investment"
                         aria-invalid={!!validationError}
@@ -321,9 +325,9 @@ export function SipCalculatorTool({ defaultType = "sip" }: { defaultType?: Calcu
                     className="w-full h-2 rounded-lg accent-violet-600 bg-slate-200 cursor-pointer"
                   />
                   <div className="flex justify-between text-[11px] text-slate-400">
-                    <span>₹500</span>
-                    <span>₹1,00,000</span>
-                    <span>₹2,00,000</span>
+                    <span>{formatIndianCurrency(500)}</span>
+                    <span>{formatIndianCurrency(100000)}</span>
+                    <span>{formatIndianCurrency(200000)}</span>
                   </div>
                 </div>
 
@@ -332,7 +336,7 @@ export function SipCalculatorTool({ defaultType = "sip" }: { defaultType?: Calcu
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-semibold text-slate-700">Expected return rate (p.a)</label>
                     <div className="flex items-center rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 font-bold text-sm text-violet-700">
-                      <input
+<FormattedNumberInput
                         type="number"
                         aria-label="Expected return rate"
                         aria-invalid={!!validationError}
@@ -369,7 +373,7 @@ export function SipCalculatorTool({ defaultType = "sip" }: { defaultType?: Calcu
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-semibold text-slate-700">Time period</label>
                     <div className="flex items-center rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 font-bold text-sm text-violet-700">
-                      <input
+<FormattedNumberInput
                         type="number"
                         aria-label="Time period"
                         aria-invalid={!!validationError}
@@ -410,8 +414,8 @@ export function SipCalculatorTool({ defaultType = "sip" }: { defaultType?: Calcu
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-semibold text-slate-700">Total investment</label>
                     <div className="flex items-center rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 font-bold text-sm text-violet-700">
-                      <span>₹</span>
-                      <input
+<span>{symbol}</span>
+<FormattedNumberInput
                         type="number"
                         aria-label="Total investment"
                         aria-invalid={!!validationError}
@@ -441,7 +445,7 @@ export function SipCalculatorTool({ defaultType = "sip" }: { defaultType?: Calcu
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-semibold text-slate-700">Expected return rate (p.a)</label>
                     <div className="flex items-center rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 font-bold text-sm text-violet-700">
-                      <input
+<FormattedNumberInput
                         type="number"
                         aria-label="Expected return rate"
                         aria-invalid={!!validationError}
@@ -472,7 +476,7 @@ export function SipCalculatorTool({ defaultType = "sip" }: { defaultType?: Calcu
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-semibold text-slate-700">Time period</label>
                     <div className="flex items-center rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 font-bold text-sm text-violet-700">
-                      <input
+<FormattedNumberInput
                         type="number"
                         aria-label="Time period"
                         aria-invalid={!!validationError}
@@ -508,8 +512,8 @@ export function SipCalculatorTool({ defaultType = "sip" }: { defaultType?: Calcu
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-semibold text-slate-700">Loan amount</label>
                     <div className="flex items-center rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 font-bold text-sm text-violet-700">
-                      <span>₹</span>
-                      <input
+<span>{symbol}</span>
+<FormattedNumberInput
                         type="number"
                         aria-label="Loan amount"
                         aria-invalid={!!validationError}
@@ -539,7 +543,7 @@ export function SipCalculatorTool({ defaultType = "sip" }: { defaultType?: Calcu
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-semibold text-slate-700">Rate of interest (p.a)</label>
                     <div className="flex items-center rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 font-bold text-sm text-violet-700">
-                      <input
+<FormattedNumberInput
                         type="number"
                         aria-label="Rate of interest"
                         aria-invalid={!!validationError}
@@ -570,7 +574,7 @@ export function SipCalculatorTool({ defaultType = "sip" }: { defaultType?: Calcu
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-semibold text-slate-700">Loan tenure</label>
                     <div className="flex items-center rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 font-bold text-sm text-violet-700">
-                      <input
+<FormattedNumberInput
                         type="number"
                         aria-label="Loan tenure"
                         aria-invalid={!!validationError}
@@ -606,8 +610,8 @@ export function SipCalculatorTool({ defaultType = "sip" }: { defaultType?: Calcu
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-semibold text-slate-700">Total investment</label>
                     <div className="flex items-center rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 font-bold text-sm text-violet-700">
-                      <span>₹</span>
-                      <input
+<span>{symbol}</span>
+<FormattedNumberInput
                         type="number"
                         aria-label="Total investment"
                         aria-invalid={!!validationError}
@@ -637,7 +641,7 @@ export function SipCalculatorTool({ defaultType = "sip" }: { defaultType?: Calcu
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-semibold text-slate-700">Rate of interest (p.a)</label>
                     <div className="flex items-center rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 font-bold text-sm text-violet-700">
-                      <input
+<FormattedNumberInput
                         type="number"
                         aria-label="Rate of interest"
                         aria-invalid={!!validationError}
@@ -668,7 +672,7 @@ export function SipCalculatorTool({ defaultType = "sip" }: { defaultType?: Calcu
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-semibold text-slate-700">Time period</label>
                     <div className="flex items-center rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 font-bold text-sm text-violet-700">
-                      <input
+<FormattedNumberInput
                         type="number"
                         aria-label="Time period"
                         aria-invalid={!!validationError}
@@ -702,7 +706,7 @@ export function SipCalculatorTool({ defaultType = "sip" }: { defaultType?: Calcu
               <div className="space-y-3">
                 <div className="flex justify-between items-center text-xs">
                   <span>Total Investment</span>
-                  <input
+<FormattedNumberInput
                     type="number"
                     aria-label="Total Investment"
                         aria-invalid={!!validationError}
@@ -716,7 +720,7 @@ export function SipCalculatorTool({ defaultType = "sip" }: { defaultType?: Calcu
                 </div>
                 <div className="flex justify-between items-center text-xs">
                   <span>Monthly Withdrawal</span>
-                  <input
+<FormattedNumberInput
                     type="number"
                     aria-label="Monthly Withdrawal"
                         aria-invalid={!!validationError}
@@ -730,7 +734,7 @@ export function SipCalculatorTool({ defaultType = "sip" }: { defaultType?: Calcu
                 </div>
                 <div className="flex justify-between items-center text-xs">
                   <span>Expected Return Rate (%)</span>
-                  <input
+<FormattedNumberInput
                     type="number"
                     aria-label="Expected Return Rate"
                         aria-invalid={!!validationError}
@@ -744,7 +748,7 @@ export function SipCalculatorTool({ defaultType = "sip" }: { defaultType?: Calcu
                 </div>
                 <div className="flex justify-between items-center text-xs">
                   <span>Time Period (Years)</span>
-                  <input
+<FormattedNumberInput
                     type="number"
                     aria-label="Time Period"
                         aria-invalid={!!validationError}
@@ -763,7 +767,7 @@ export function SipCalculatorTool({ defaultType = "sip" }: { defaultType?: Calcu
               <div className="space-y-3">
                 <div className="flex justify-between items-center text-xs">
                   <span>Monthly Deposit</span>
-                  <input
+<FormattedNumberInput
                     type="number"
                     aria-label="Monthly Deposit"
                         aria-invalid={!!validationError}
@@ -777,7 +781,7 @@ export function SipCalculatorTool({ defaultType = "sip" }: { defaultType?: Calcu
                 </div>
                 <div className="flex justify-between items-center text-xs">
                   <span>Rate of Interest (%)</span>
-                  <input
+<FormattedNumberInput
                     type="number"
                     aria-label="Rate of Interest"
                         aria-invalid={!!validationError}
@@ -791,7 +795,7 @@ export function SipCalculatorTool({ defaultType = "sip" }: { defaultType?: Calcu
                 </div>
                 <div className="flex justify-between items-center text-xs">
                   <span>Tenure (Years)</span>
-                  <input
+<FormattedNumberInput
                     type="number"
                     aria-label="Tenure"
                         aria-invalid={!!validationError}
@@ -810,7 +814,7 @@ export function SipCalculatorTool({ defaultType = "sip" }: { defaultType?: Calcu
               <div className="space-y-3">
                 <div className="flex justify-between items-center text-xs">
                   <span>Yearly Investment (Max ₹1.5L)</span>
-                  <input
+<FormattedNumberInput
                     type="number"
                     aria-label="Yearly Investment"
                         aria-invalid={!!validationError}
@@ -824,7 +828,7 @@ export function SipCalculatorTool({ defaultType = "sip" }: { defaultType?: Calcu
                 </div>
                 <div className="flex justify-between items-center text-xs">
                   <span>Time Period (Years)</span>
-                  <input
+<FormattedNumberInput
                     type="number"
                     aria-label="Time Period"
                         aria-invalid={!!validationError}
@@ -863,7 +867,7 @@ export function SipCalculatorTool({ defaultType = "sip" }: { defaultType?: Calcu
                 </div>
                 <div className="flex justify-between items-center text-xs">
                   <span>Amount</span>
-                  <input
+<FormattedNumberInput
                     type="number"
                     aria-label="Amount"
                         aria-invalid={!!validationError}

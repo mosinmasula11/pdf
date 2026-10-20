@@ -139,6 +139,8 @@ export const toolIcons: Record<string, LucideIcon> = {
   "lumpsum-calculator": Coins,
   "emi-calculator": PieChart,
   "income-tax-calculator": FileSpreadsheet,
+  "number-to-words": Hash,
+  "in-hand-salary-calculator": Coins,
   "gst-calculator": Receipt,
   "compound-interest-calculator": TrendingUp,
   "fd-calculator": Building2,

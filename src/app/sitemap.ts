@@ -35,6 +35,8 @@ const highPriorityToolPaths = new Set([
   "/lumpsum-calculator",
   "/emi-calculator",
   "/income-tax-calculator",
+  "/number-to-words",
+  "/in-hand-salary-calculator",
   "/gst-calculator",
   "/compound-interest-calculator",
   "/fd-calculator",
