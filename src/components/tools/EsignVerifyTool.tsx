@@ -98,8 +98,12 @@ function FileResult({
           signingTime: job.serverVerification?.signingTime,
         }
       );
+      setCopyProgress("Restoring original PDF metadata...");
+      const originalBuffer = await job.file.arrayBuffer();
+      const { restoreOriginalPdfMetadata } = await import("@/lib/pdf-metadata");
+      const finalBytes = await restoreOriginalPdfMetadata(originalBuffer, bytes, effectivePassword);
       downloadBlob(
-        new Blob([new Uint8Array(bytes)], { type: "application/pdf" }),
+        new Blob([new Uint8Array(finalBytes)], { type: "application/pdf" }),
         job.file.name.replace(/\.pdf$/i, "") + "-verified.pdf"
       );
       setNeedsPasswordInput(false);
@@ -270,6 +274,10 @@ function FileResult({
                 <p className="flex items-center gap-1 text-emerald-950 dark:text-emerald-200 font-medium">
                   <Unlock className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
                   <span><strong>Password Removed:</strong> The downloaded verified PDF will open directly without asking for any password.</span>
+                </p>
+                <p className="flex items-center gap-1 text-emerald-950 dark:text-emerald-200 font-medium">
+                  <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  <span><strong>Original Metadata Preserved:</strong> Document title, author, creation dates, and original properties are retained in the downloaded PDF.</span>
                 </p>
               </div>
             </div>

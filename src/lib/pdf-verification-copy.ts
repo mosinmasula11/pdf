@@ -1,4 +1,4 @@
-import { PDFDocument, PDFName, StandardFonts, rgb, type PDFPage, type PDFFont, type PDFImage } from "@cantoo/pdf-lib";
+import { PDFDocument, PDFName, PDFRef, StandardFonts, rgb, type PDFPage, type PDFFont, type PDFImage } from "@cantoo/pdf-lib";
 import { getPdfJs } from "./pdfjs-helper";
 import { pdfFingerprint, type PdfVerificationEvidence } from "./pdf-verification-evidence";
 import { hasIntactOriginal } from "./signature-result";
@@ -524,6 +524,14 @@ export async function buildVerificationCopy(
       directDoc.catalog.delete(PDFName.of("Perms"));
       directDoc.catalog.delete(PDFName.of("SigFlags"));
 
+      // Wipe all metadata (XMP metadata packet and Document Info trailer dictionary)
+      const meta = directDoc.catalog.get(PDFName.of("Metadata"));
+      if (meta instanceof PDFRef) directDoc.context.delete(meta);
+      directDoc.catalog.delete(PDFName.of("Metadata"));
+      const info = directDoc.context.trailerInfo.Info;
+      if (info instanceof PDFRef) directDoc.context.delete(info);
+      directDoc.context.trailerInfo.Info = undefined;
+
       // Fallback: If no annotation rect was detected, use standard Aadhaar card signature coordinates
       if (!sigRect || sigRect.width < 10 || sigRect.height < 10) {
         sigRect = {
@@ -583,8 +591,9 @@ export async function buildVerificationCopy(
     }
 
     const output = await PDFDocument.create();
-    output.setTitle("Verified Document");
-    output.setSubject("Original SHA-256: " + evidence.sha256);
+    // Wipe all metadata on output PDF
+    output.catalog.delete(PDFName.of("Metadata"));
+    output.context.trailerInfo.Info = undefined;
 
     const tickImg = await loadTickCanvasImage();
 

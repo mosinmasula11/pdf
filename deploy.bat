@@ -7,7 +7,7 @@ IF NOT EXIST ".git" git init
 
 REM Stage and commit
 git add .
-git commit -m "new changed added for sco"
+git commit -m "completed esigning the app"
 
 REM Set branch
 git branch -M main
