@@ -12,6 +12,7 @@ const highPriorityToolPaths = new Set([
   "/pdf-to-word",
   "/rotate-pdf",
   "/sign-pdf",
+  "/esign-verify",
   "/protect-pdf",
   "/unlock-pdf",
   "/compress-image",

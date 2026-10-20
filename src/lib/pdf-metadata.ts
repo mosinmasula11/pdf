@@ -20,3 +20,10 @@ export async function writePdfProperties(bytes: ArrayBuffer | Uint8Array, values
   }
   return document.save();
 }
+
+/**
+ * Strips all metadata (XMP metadata streams and Document Info dictionaries) from PDF bytes.
+ */
+export async function stripPdfMetadata(bytes: ArrayBuffer | Uint8Array): Promise<Uint8Array> {
+  return writePdfProperties(bytes, { title: "", author: "", subject: "", keywords: "", creator: "", producer: "" }, true);
+}

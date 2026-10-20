@@ -373,6 +373,18 @@ export const toolRegistry: ToolDefinition[] = [
     status: "working",
   },
   {
+    id: "esign-verify",
+    name: "E-sign Verify",
+    description: "Check original PDF signature integrity locally, including password-protected files. Signer trust and revocation are not verified.",
+    category: "PDF Tools",
+    subcategory: "PDF Security",
+    path: "/esign-verify",
+    supportedFormats: ["PDF"],
+    seoTitle: "E-sign Verify | Check PDF Digital Signature Integrity",
+    metaDescription: "Inspect PDF digital signature integrity locally. Open password-protected originals in memory without rewriting signed bytes.",
+    status: "working",
+  },
+  {
     id: "sign-pdf",
     name: "Sign PDF",
     description: "Sign yourself or request electronic signatures on PDF documents.",

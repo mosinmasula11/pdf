@@ -67,7 +67,7 @@ export function usePdfEditor(){
       pageImages.current.clear();history.current.clear();setCanUndo(false);
       setFile(selected);setTotalPages(pdf.numPages);setCurrentPage(1);
     }catch(err){
-      if(version===uploadVersion.current){setFile(null);setError(err instanceof Error?err.message:"Could not open this PDF. Password-protected PDFs must be unlocked first.");}
+      if(version===uploadVersion.current){setFile(null);setError(err instanceof Error&&/encrypted/i.test(err.message)?"This PDF is password-protected. Use E-sign Verify to check the original file with its password. Editing requires an unlocked copy and may invalidate the signature.":err instanceof Error?err.message:"Could not open this PDF.");}
     }finally{
       await task?.destroy();
       if(version===uploadVersion.current)setUploading(false);

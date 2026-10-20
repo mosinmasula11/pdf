@@ -36,7 +36,7 @@ const toolMenus = [
       },
       {
         title: "PDF Security",
-        toolIds: ["unlock-pdf", "protect-pdf", "sign-pdf", "redact-pdf", "compare-pdf", "pdf-metadata-editor"],
+        toolIds: ["unlock-pdf", "protect-pdf", "sign-pdf", "esign-verify", "redact-pdf", "compare-pdf", "pdf-metadata-editor"],
       },
       {
         title: "PDF Intelligence",

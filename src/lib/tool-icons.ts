@@ -101,6 +101,7 @@ export const toolIcons: Record<string, LucideIcon> = {
   "unlock-pdf": Unlock,
   "protect-pdf": Lock,
   "sign-pdf": Signature,
+  "esign-verify": FileCheck,
   "redact-pdf": EyeOff,
   "compare-pdf": GitCompare,
   "pdf-metadata-editor": Tags,
