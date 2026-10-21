@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import { SiteShell } from "@/components/layout/SiteShell";
 import { siteConfig } from "@/lib/site-config";
 import { toolRegistry } from "@/lib/tool-registry";
@@ -333,6 +334,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="min-h-full bg-slate-50 text-slate-900">
         <SiteShell>{children}</SiteShell>
+        <Analytics />
       </body>
     </html>
   );
