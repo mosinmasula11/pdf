@@ -29,8 +29,8 @@ import {
 import { formatBytes, downloadBlob } from "@/lib/browser-utils";
 import { DEFAULT_COLLECTION, apiHistoryKey, deduplicateApiHistory, recordApiHistory, exportApiCollection, importApiCollection, normalizeCollections } from "@/lib/api-workspace";
 import type { ApiCollection } from "@/lib/api-workspace";
-import { apiParams, apiSnippet, API_TIMEOUT_MS, compileApiRequest, readApiText, sanitizeApiRequest } from "@/lib/api-request";
-import { apiDestinationKind, directApiFailure, directApiOptions } from "@/lib/api-local";
+import { apiParams, apiSnippet, API_TIMEOUT_MS, compileApiRequest, sanitizeApiRequest } from "@/lib/api-request";
+import { apiDestinationKind } from "@/lib/api-local";
 
 type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "HEAD" | "OPTIONS";
 
@@ -341,30 +341,21 @@ export function ApiClientTool() {
         persistRequests("msyn_api_client_history", updated);
         return updated;
       });
-      if (effectiveProxy) {
-        const res = await fetch("/api/proxy", {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(compiled), signal,
-        });
-        const json = await res.json();
-        if (requestController.current !== controller) return;
-        if (typeof json.data !== "string" || !json.headers || typeof json.status !== "number") {
-          throw new Error(json.error || "The proxy returned an invalid response.");
-        }
-        setResponse({ ...json, isError: json.isError || (!res.ok && json.status === 0) });
-      } else {
-        const res = await fetch(compiled.url, directApiOptions(compiled.url, method, compiled.headers, compiled.body, signal));
-        const text = await readApiText(res);
-        if (requestController.current !== controller) return;
-        setResponse({ status: res.status, statusText: res.statusText || (res.ok ? "OK" : "Error"),
-          durationMs: Math.round(performance.now() - startTime), sizeBytes: new TextEncoder().encode(text).length,
-          headers: Object.fromEntries(res.headers), data: text, contentType: res.headers.get("content-type") || "text/plain" });
+      const res = await fetch(effectiveProxy ? "/api/proxy" : "/api/local-request", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(compiled), signal,
+      });
+      const json = await res.json();
+      if (requestController.current !== controller) return;
+      if (typeof json.data !== "string" || !json.headers || typeof json.status !== "number") {
+        throw new Error(json.error || "The server returned an invalid response.");
       }
+      setResponse({ ...json, isError: json.isError || (!res.ok && json.status === 0) });
     } catch (error: unknown) {
       if (requestController.current !== controller) return;
       if (error instanceof SyntaxError && bodyType === "json") { setJsonError("Enter a valid JSON request body."); setActiveReqTab("body"); }
       const message = signal.aborted ? (controller.signal.aborted ? "Request cancelled." : "Request timed out after 30 seconds.")
-        : !effectiveProxy ? directApiFailure(error, url) : error instanceof Error ? error.message : "Request failed.";
+        : error instanceof Error ? error.message : "Request failed.";
       setResponse({ status: 0, statusText: signal.aborted ? "Request stopped" : "Request Error", durationMs: Math.round(performance.now() - startTime),
         sizeBytes: 0, headers: {}, data: message, contentType: "text/plain", isError: true });
     } finally {

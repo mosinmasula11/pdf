@@ -55,3 +55,11 @@ Browser setup references: [Chrome Local Network Access](https://developer.chrome
 ## Browser connection regression fixed
 
 Removed the forced targetAddressSpace: local fetch option, which mismatched the loopback destination in the tested browser. Standard CORS fetch now returns 200 OK for http://localhost:8000/api/v1/equity/golden-cross from the local API client (56 ms, 6.4 KB). Browser response contains the expected JSON. This verifies local preview only; production deployment and untrusted TLS were not changed. TypeScript, lint, and 42 request/local integration tests passed.
+
+## Next.js targets without CORS headers
+
+Both http://localhost:3000/ and http://192.168.0.210:3000/ returned 200 HTML without Access-Control-Allow-Origin; direct browser fetch could not read them. Added a same-origin, development-only local request transport. It accepts localhost and private literal IP addresses only, validates origin and local page hostname, preserves TLS validation, bounds request/response sizes and duration, and does not follow redirects. The public production proxy remains unchanged. Both addresses now return 200 in the API client (18 ms localhost; 39 ms LAN). These are HTML root pages. Four new transport tests and 32 request tests pass.
+
+## Server-only HTTP transport
+
+Removed the direct browser HTTP fallback. All HTTP Send actions now POST to /api/proxy (public destinations) or /api/local-request (local destinations). Confirmed both routes in Next.js server logs and successful browser responses. In production the local route returns an explicit local-agent-required error instead of attempting to access the hosting server loopback or calling the target from the browser. This change has not been deployed by this task. 36 request and development-local tests passed.
