@@ -27,9 +27,10 @@ import {
   X,
 } from "lucide-react";
 import { formatBytes, downloadBlob } from "@/lib/browser-utils";
-import { DEFAULT_COLLECTION, exportApiCollection, groupApiHistory, importApiCollection, normalizeCollections } from "@/lib/api-workspace";
+import { DEFAULT_COLLECTION, apiHistoryKey, deduplicateApiHistory, recordApiHistory, exportApiCollection, importApiCollection, normalizeCollections } from "@/lib/api-workspace";
 import type { ApiCollection } from "@/lib/api-workspace";
 import { apiParams, apiSnippet, API_TIMEOUT_MS, compileApiRequest, readApiText, sanitizeApiRequest } from "@/lib/api-request";
+import { apiDestinationKind, directApiFailure, directApiOptions } from "@/lib/api-local";
 
 type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "HEAD" | "OPTIONS";
 
@@ -42,6 +43,7 @@ interface KeyValuePair {
 }
 
 interface SavedRequest {
+  createdAt?: number;
   id: string;
   name: string;
   method: HttpMethod;
@@ -73,7 +75,8 @@ type ApiResponse = {
     contentType: string;
     isError?: boolean;
   };
-interface OpenRequestTab { id: string; name: string; request: SavedRequest | null; response: ApiResponse | null; proxy: boolean; savedId: string | null }
+interface OpenRequestTab {
+  sourceId?: string; id: string; name: string; request: SavedRequest | null; response: ApiResponse | null; savedId: string | null }
 const METHOD_COLORS: Record<HttpMethod, { text: string; bg: string; border: string }> = {
   GET: { text: "text-emerald-700", bg: "bg-emerald-50", border: "border-emerald-300" },
   POST: { text: "text-amber-700", bg: "bg-amber-50", border: "border-amber-300" },
@@ -121,10 +124,13 @@ export function ApiClientTool() {
   // Main Request Configuration
   const [method, setMethod] = useState<HttpMethod>("GET");
   const [url, setUrl] = useState("https://jsonplaceholder.typicode.com/posts?_limit=5");
-  const [useProxy, setUseProxy] = useState(true);
+  const destinationKind = apiDestinationKind(url);
+  const effectiveProxy = destinationKind === "public";
 
   // Tabs for Request Editor
   const [activeReqTab, setActiveReqTab] = useState<"params" | "headers" | "auth" | "body" | "code">("params");
+  const supportsBody = !["GET", "HEAD"].includes(method);
+  const visibleReqTab = activeReqTab === "body" && !supportsBody ? "params" : activeReqTab;
 
   // Query Params
   const [params, setParams] = useState<KeyValuePair[]>([
@@ -177,17 +183,43 @@ export function ApiClientTool() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [collections, setCollections] = useState<ApiCollection[]>([DEFAULT_COLLECTION]);
   const [collectionId, setCollectionId] = useState(DEFAULT_COLLECTION.id);
-  const [libraryView, setLibraryView] = useState<"collections" | "history">("collections");
+
   const [librarySearch, setLibrarySearch] = useState("");
   const [libraryError, setLibraryError] = useState("");
   const [collectionMenu, setCollectionMenu] = useState<{ collection: ApiCollection; left: number; top: number } | null>(null);
+  const [requestMenu, setRequestMenu] = useState<{ request: SavedRequest; recent: boolean; left: number; top: number } | null>(null);
+  const requestMenuRef = useRef<HTMLDivElement>(null);
+  const [dropTarget, setDropTarget] = useState<string | null>(null);
+  useEffect(() => {
+    if (!requestMenu) return;
+    requestMenuRef.current?.querySelector<HTMLButtonElement>('button')?.focus();
+    const outside = (event: PointerEvent) => { if (!requestMenuRef.current?.contains(event.target as Node)) setRequestMenu(null); };
+    const escape = (event: KeyboardEvent) => { if (event.key === 'Escape') setRequestMenu(null); };
+    const close = () => setRequestMenu(null);
+    document.addEventListener('pointerdown', outside);
+    document.addEventListener('keydown', escape);
+    window.addEventListener('resize', close);
+    window.addEventListener('scroll', close, true);
+    return () => { document.removeEventListener('pointerdown', outside); document.removeEventListener('keydown', escape); window.removeEventListener('resize', close); window.removeEventListener('scroll', close, true); };
+  }, [requestMenu]);
+  const [tabMenu, setTabMenu] = useState<{ id: string; left: number; top: number } | null>(null);
+  const tabMenuRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!tabMenu) return;
+    tabMenuRef.current?.querySelector<HTMLButtonElement>('button')?.focus();
+    const outside = (event: PointerEvent) => { if (!tabMenuRef.current?.contains(event.target as Node)) setTabMenu(null); };
+    const escape = (event: KeyboardEvent) => { if (event.key === 'Escape') setTabMenu(null); };
+    const close = () => setTabMenu(null);
+    document.addEventListener('pointerdown', outside); document.addEventListener('keydown', escape); window.addEventListener('scroll', close, true); window.addEventListener('resize', close);
+    return () => { document.removeEventListener('pointerdown', outside); document.removeEventListener('keydown', escape); window.removeEventListener('scroll', close, true); window.removeEventListener('resize', close); };
+  }, [tabMenu]);
   const collectionMenuRef = useRef<HTMLDivElement>(null);
   const collectionMenuTrigger = useRef<HTMLButtonElement>(null);
   const [collapsedCollections, setCollapsedCollections] = useState<Record<string, boolean>>({});
   const [collectionModalOpen, setCollectionModalOpen] = useState(false);
   const [collectionName, setCollectionName] = useState("");
   const [editingCollection, setEditingCollection] = useState<string | null>(null);
-  const [openTabs, setOpenTabs] = useState<OpenRequestTab[]>([{ id: "initial", name: "Untitled request", request: null, response: null, proxy: true, savedId: null }]);
+  const [openTabs, setOpenTabs] = useState<OpenRequestTab[]>([{ id: "initial", name: "Untitled request", request: null, response: null, savedId: null }]);
   const [activeTabId, setActiveTabId] = useState("initial");
   const [draftName, setDraftName] = useState("Untitled request");
   const [activeSavedId, setActiveSavedId] = useState<string | null>(null);
@@ -237,8 +269,9 @@ export function ApiClientTool() {
       try {
         const parsed: unknown = JSON.parse(localStorage.getItem(key) || "[]");
         const items = Array.isArray(parsed) ? parsed.filter(item => item && typeof item.url === "string" && item.method in METHOD_COLORS).map(item => sanitizeApiRequest(item as SavedRequest)) : [];
-        setter(items);
-        localStorage.setItem(key, JSON.stringify(items));
+        const migrated = key === "msyn_api_client_history" ? deduplicateApiHistory(items) : items;
+        setter(migrated);
+        localStorage.setItem(key, JSON.stringify(migrated));
       } catch { setStorageNotice("Some saved requests could not be loaded. Browser storage may be unavailable."); }
     }
     });
@@ -302,13 +335,13 @@ export function ApiClientTool() {
     try {
       const compiled = compileApiRequest(currentConfig());
       const histItem = sanitizeApiRequest({ ...currentConfig(), params, id: crypto.randomUUID(),
-        name: method + " request", timestamp: Date.now() });
+        name: draftName === "Untitled request" ? method + " request" : draftName, timestamp: Date.now() });
       setHistory(previous => {
-        const updated = [histItem, ...previous].slice(0, 25);
+        const updated = recordApiHistory(previous, histItem);
         persistRequests("msyn_api_client_history", updated);
         return updated;
       });
-      if (useProxy) {
+      if (effectiveProxy) {
         const res = await fetch("/api/proxy", {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify(compiled), signal,
@@ -320,7 +353,7 @@ export function ApiClientTool() {
         }
         setResponse({ ...json, isError: json.isError || (!res.ok && json.status === 0) });
       } else {
-        const res = await fetch(compiled.url, { method, headers: compiled.headers, body: compiled.body, signal });
+        const res = await fetch(compiled.url, directApiOptions(compiled.url, method, compiled.headers, compiled.body, signal));
         const text = await readApiText(res);
         if (requestController.current !== controller) return;
         setResponse({ status: res.status, statusText: res.statusText || (res.ok ? "OK" : "Error"),
@@ -331,7 +364,7 @@ export function ApiClientTool() {
       if (requestController.current !== controller) return;
       if (error instanceof SyntaxError && bodyType === "json") { setJsonError("Enter a valid JSON request body."); setActiveReqTab("body"); }
       const message = signal.aborted ? (controller.signal.aborted ? "Request cancelled." : "Request timed out after 30 seconds.")
-        : error instanceof Error ? error.message : "Request failed.";
+        : !effectiveProxy ? directApiFailure(error, url) : error instanceof Error ? error.message : "Request failed.";
       setResponse({ status: 0, statusText: signal.aborted ? "Request stopped" : "Request Error", durationMs: Math.round(performance.now() - startTime),
         sizeBytes: 0, headers: {}, data: message, contentType: "text/plain", isError: true });
     } finally {
@@ -366,6 +399,7 @@ export function ApiClientTool() {
       id: activeSavedId || crypto.randomUUID(),
       name: saveName.trim(),
       collectionId: destination,
+      createdAt: savedRequests.find(item => item.id === activeSavedId)?.createdAt ?? savedRequests.find(item => item.id === activeSavedId)?.timestamp ?? Date.now(),
       method,
       url,
       params,
@@ -383,19 +417,12 @@ export function ApiClientTool() {
       bodyFormData,
       timestamp: Date.now(),
     });
-    const updated = [newItem, ...savedRequests.filter(item => item.id !== newItem.id)];
+    const updated = savedRequests.some(item => item.id === newItem.id) ? savedRequests.map(item => item.id === newItem.id ? newItem : item) : [...savedRequests, newItem];
     setDraftName(newItem.name); setActiveSavedId(newItem.id); setCollectionId(destination);
     setSavedRequests(updated);
     persistRequests("msyn_api_client_saved", updated);
     setSaveModalOpen(false);
     setSaveName("");
-  };
-
-  const removeSavedRequest = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    const updated = savedRequests.filter((r) => r.id !== id);
-    setSavedRequests(updated);
-    persistRequests("msyn_api_client_saved", updated);
   };
 
   const clearHistory = () => {
@@ -437,8 +464,8 @@ export function ApiClientTool() {
       const item = { id: crypto.randomUUID(), name: imported.name };
       const requests: SavedRequest[] = imported.requests.map(request => ({ ...request, id: crypto.randomUUID(), collectionId: item.id, timestamp: Date.now() }));
       persistCollections([...collections, item]);
-      const updated = [...requests, ...savedRequests]; setSavedRequests(updated); persistRequests("msyn_api_client_saved", updated);
-      setLibraryView("collections"); setLibrarySearch(""); setStorageNotice("Imported " + requests.length + " requests. Re-enter authentication values before sending.");
+      const updated = [...savedRequests, ...requests]; setSavedRequests(updated); persistRequests("msyn_api_client_saved", updated);
+      setLibrarySearch(""); setStorageNotice("Imported " + requests.length + " requests. Re-enter authentication values before sending.");
     } catch (error) { setLibraryError(error instanceof Error ? error.message : "Collection import failed."); }
     if (collectionFile.current) collectionFile.current.value = "";
   };
@@ -447,18 +474,18 @@ export function ApiClientTool() {
     const stopped = requestController.current ? { status: 0, statusText: "Request stopped", durationMs: Math.round(performance.now() - requestStartedAt.current),
       sizeBytes: 0, headers: {}, data: "Request cancelled.", contentType: "text/plain", isError: true } : response;
     if (requestController.current) cancelRequest();
-    return openTabs.map(tab => tab.id === activeTabId ? { ...tab, name: draftName, request: draftRequest(), response: stopped, proxy: useProxy, savedId: activeSavedId } : tab);
+    return openTabs.map(tab => tab.id === activeTabId ? { ...tab, name: draftName, request: draftRequest(), response: stopped, savedId: activeSavedId } : tab);
   };
   const selectRequestTab = (id: string) => {
     if (id === activeTabId) return;
     const tabs = checkpointTabs(), tab = tabs.find(item => item.id === id);
     if (!tab) return;
-    setOpenTabs(tabs); setActiveTabId(id); setDraftName(tab.name); setActiveSavedId(tab.savedId); setUseProxy(tab.proxy);
+    setOpenTabs(tabs); setActiveTabId(id); setDraftName(tab.name); setActiveSavedId(tab.savedId);
     if (tab.request) { restoreRequest(tab.request); setCollectionId(tab.request.collectionId || DEFAULT_COLLECTION.id); }
     setResponse(tab.response); setJsonError(null);
   };
   const openRequest = (request?: SavedRequest, saved = false, targetCollection = DEFAULT_COLLECTION.id) => {
-    const existing = saved && request ? openTabs.find(tab => tab.savedId === request.id || (tab.id === activeTabId && activeSavedId === request.id)) : undefined;
+    const existing = request ? openTabs.find(tab => tab.sourceId === request.id || tab.savedId === request.id || tab.request?.id === request.id || (tab.id === activeTabId && activeSavedId === request.id)) : undefined;
     if (existing) { selectRequestTab(existing.id); return; }
     const tabs = checkpointTabs(), id = crypto.randomUUID();
     const next: SavedRequest = request || {
@@ -466,9 +493,9 @@ export function ApiClientTool() {
       authType: "none", bearerToken: "", basicUser: "", basicPass: "", apiKeyName: "X-API-Key", apiKeyValue: "", apiKeyPlacement: "header",
       bodyType: "none", bodyRaw: "", bodyJson: "", bodyFormData: [], id, name: "Untitled request", timestamp: Date.now(), collectionId: targetCollection,
     };
-    const tab: OpenRequestTab = { id, name: next.name, request: next, response: null, proxy: true, savedId: saved ? next.id : null };
+    const tab: OpenRequestTab = { id, sourceId: request?.id, name: next.name, request: next, response: null, savedId: saved ? next.id : null };
     setOpenTabs([...tabs, tab]); setActiveTabId(id); setDraftName(next.name); setActiveSavedId(tab.savedId);
-    restoreRequest(next); setCollectionId(next.collectionId || DEFAULT_COLLECTION.id); setResponse(null); setUseProxy(true);
+    restoreRequest(next); setCollectionId(next.collectionId || DEFAULT_COLLECTION.id); setResponse(null);
   };
   const closeRequestTab = (id: string) => {
     if (id !== activeTabId) { setOpenTabs(tabs => tabs.filter(tab => tab.id !== id)); return; }
@@ -477,17 +504,68 @@ export function ApiClientTool() {
       const empty: SavedRequest = { ...draftRequest(), id: crypto.randomUUID(), name: "Untitled request", url: "", method: "GET", params: [], headers: [], authType: "none",
         bearerToken: "", basicUser: "", basicPass: "", apiKeyValue: "", bodyType: "none", bodyRaw: "", bodyJson: "", bodyFormData: [] };
       restoreRequest(empty); setActiveSavedId(null); setDraftName(empty.name); setResponse(null);
-      const tab: OpenRequestTab = { id: empty.id, name: empty.name, request: empty, response: null, proxy: true, savedId: null };
-      setOpenTabs([tab]); setActiveTabId(tab.id); setUseProxy(true); return;
+      const tab: OpenRequestTab = { id: empty.id, name: empty.name, request: empty, response: null, savedId: null };
+      setOpenTabs([tab]); setActiveTabId(tab.id); return;
     }
     setOpenTabs(tabs);
     if (id === activeTabId) {
-      const tab = tabs[tabs.length - 1]; setActiveTabId(tab.id); setDraftName(tab.name); setActiveSavedId(tab.savedId); setUseProxy(tab.proxy); setResponse(tab.response);
+      const tab = tabs[tabs.length - 1]; setActiveTabId(tab.id); setDraftName(tab.name); setActiveSavedId(tab.savedId); setResponse(tab.response);
       if (tab.request) { restoreRequest(tab.request); setCollectionId(tab.request.collectionId || DEFAULT_COLLECTION.id); }
     }
   };
+  const closeRequestTabs = (target: string, mode: 'all' | 'others' | 'right' | 'left') => {
+    const tabs = checkpointTabs();
+    const index = tabs.findIndex(tab => tab.id === target);
+    const remaining = tabs.filter((tab, position) => mode === 'all' ? false : mode === 'others' ? tab.id === target : mode === 'right' ? position <= index : position >= index);
+    setTabMenu(null);
+    if (!remaining.length) {
+      const id = crypto.randomUUID();
+      const empty: SavedRequest = { ...draftRequest(), id, name: 'Untitled request', url: '', method: 'GET', params: [], headers: [], authType: 'none', bearerToken: '', basicUser: '', basicPass: '', apiKeyValue: '', bodyType: 'none', bodyRaw: '', bodyJson: '', bodyFormData: [], collectionId: DEFAULT_COLLECTION.id };
+      setOpenTabs([{ id, name: empty.name, request: empty, response: null, savedId: null }]); setActiveTabId(id); restoreRequest(empty); setCollectionId(DEFAULT_COLLECTION.id); setActiveSavedId(null); setDraftName(empty.name); setResponse(null); setJsonError(null); return;
+    }
+    const next = remaining.find(tab => tab.id === activeTabId) || remaining.find(tab => tab.id === target) || remaining[remaining.length - 1];
+    setOpenTabs(remaining); setActiveTabId(next.id); setDraftName(next.name); setActiveSavedId(next.savedId); setResponse(next.response); setJsonError(null);
+    if (next.request) { restoreRequest(next.request); setCollectionId(next.request.collectionId || DEFAULT_COLLECTION.id); }
+  };
   const matchingRequest = (item: SavedRequest) => (item.name + " " + item.url + " " + item.method).toLowerCase().includes(librarySearch.toLowerCase());
-  const historyGroups = history.length ? groupApiHistory(history.filter(matchingRequest)) : [];
+
+
+  const moveRequest = (request: SavedRequest, recent: boolean, destination: string) => {
+    if (!collections.some(item => item.id === destination)) return;
+    const moved = sanitizeApiRequest({ ...request, collectionId: destination });
+    const next = savedRequests.some(item => item.id === request.id) ? savedRequests.map(item => item.id === request.id ? moved : item) : [...savedRequests, moved];
+    setSavedRequests(next); persistRequests('msyn_api_client_saved', next);
+    if (recent) { const nextHistory = history.filter(item => item.id !== request.id); setHistory(nextHistory); persistRequests('msyn_api_client_history', nextHistory); }
+    setOpenTabs(tabs => tabs.map(tab => tab.request?.id === request.id ? { ...tab, request: { ...tab.request, collectionId: destination }, savedId: request.id } : tab));
+    if (activeSavedId === request.id || openTabs.find(tab => tab.id === activeTabId)?.request?.id === request.id) { setCollectionId(destination); setActiveSavedId(request.id); }
+    setCollapsedCollections(previous => ({ ...previous, [destination]: false }));
+    setRequestMenu(null); setDropTarget(null);
+  };
+  const deleteRequest = (request: SavedRequest, recent: boolean) => {
+    const next = (recent ? history : savedRequests).filter(item => item.id !== request.id);
+    if (recent) setHistory(next); else { setSavedRequests(next); if (activeSavedId === request.id) setActiveSavedId(null); }
+    persistRequests(recent ? 'msyn_api_client_history' : 'msyn_api_client_saved', next); setRequestMenu(null);
+  };
+  const showRequestMenu = (request: SavedRequest, recent: boolean, x: number, y: number) => {
+    setCollectionMenu(null);
+    setRequestMenu({ request, recent, left: Math.max(8, Math.min(x, window.innerWidth - 248)), top: Math.max(8, Math.min(y, window.innerHeight - 300)) });
+  };
+  const renameRequest = (request: SavedRequest, recent: boolean, name: string) => {
+    const trimmed = name.trim(); if (!trimmed) return;
+    const items = (recent ? history : savedRequests).map(item => item.id === request.id ? { ...item, name: trimmed } : item);
+    if (recent) setHistory(items); else setSavedRequests(items);
+    persistRequests(recent ? 'msyn_api_client_history' : 'msyn_api_client_saved', items);
+    setOpenTabs(tabs => tabs.map(tab => tab.sourceId === request.id || tab.savedId === request.id || tab.request?.id === request.id ? { ...tab, name: trimmed, request: tab.request ? { ...tab.request, name: trimmed } : null } : tab));
+    if (activeSavedId === request.id || openTabs.find(tab => tab.id === activeTabId)?.sourceId === request.id) setDraftName(trimmed);
+  };
+  const commitDraftName = () => {
+    const sourceId = activeSavedId || openTabs.find(tab => tab.id === activeTabId)?.sourceId;
+    const saved = savedRequests.find(item => item.id === sourceId);
+    const item = saved || history.find(entry => entry.id === sourceId);
+    if (item) renameRequest(item, !saved, draftName);
+    else setDraftName(draftName.trim() || 'Untitled request');
+  };
+  const normalRequests = [...savedRequests.filter(item => !item.collectionId || item.collectionId === DEFAULT_COLLECTION.id), ...history.filter(item => !savedRequests.some(saved => saved.id === item.id || apiHistoryKey(saved) === apiHistoryKey(item)))].filter(matchingRequest).sort((a, b) => (a.createdAt ?? a.timestamp) - (b.createdAt ?? b.timestamp));
 
   const generatedCode = useMemo(() => {
     try { return apiSnippet({ method, url, headers, authType, bearerToken, basicUser, basicPass,
@@ -530,69 +608,37 @@ export function ApiClientTool() {
       </div>
 
       <div className="flex min-w-0 flex-col lg:min-h-[760px] lg:flex-row">
-        <aside id="request-library" aria-label="Collections and history" className={(sidebarOpen ? "flex" : "hidden lg:flex") + " w-full shrink-0 flex-col border-b border-slate-200 bg-slate-50 lg:w-72 lg:border-r lg:border-b-0"}>
-          <div className="flex border-b border-slate-200" role="tablist" aria-label="Library">
-            <button type="button" role="tab" aria-selected={libraryView === "collections"} aria-controls="library-collections" onClick={() => setLibraryView("collections")} className={"inline-flex flex-1 items-center justify-center gap-2 border-b-2 px-3 py-3 text-xs font-semibold " + (libraryView === "collections" ? "border-[var(--brand)] bg-white text-slate-900" : "border-transparent text-slate-500")}><Folder size={15} />Collections</button>
-            <button type="button" role="tab" aria-selected={libraryView === "history"} aria-controls="library-history" onClick={() => setLibraryView("history")} className={"inline-flex flex-1 items-center justify-center gap-2 border-b-2 px-3 py-3 text-xs font-semibold " + (libraryView === "history" ? "border-[var(--brand)] bg-white text-slate-900" : "border-transparent text-slate-500")}><Clock size={15} />History</button>
-          </div>
-          <div className="flex items-center gap-1 border-b border-slate-200 px-2 py-2">
-            <label className="flex min-w-0 flex-1 items-center gap-2 rounded-md border border-slate-200 bg-white px-2 text-slate-400"><Search size={14} className="shrink-0" /><input type="search" aria-label="Search collections and history" value={librarySearch} onChange={event => setLibrarySearch(event.target.value)} placeholder="Search" className="h-8 min-w-0 flex-1 bg-transparent text-xs text-slate-700 outline-none" /></label>
-            {libraryView === "collections" ? <IconButton label="New collection" onClick={() => { setEditingCollection(null); setCollectionName(""); setCollectionModalOpen(true); }}><Plus size={16} /></IconButton>
-              : <IconButton label="Clear request history" onClick={clearHistory} disabled={!history.length}><Trash2 size={15} /></IconButton>}
-          </div>
-          <div role="tabpanel" id={"library-" + libraryView} className="max-h-80 min-w-0 overflow-y-auto px-1 py-2 lg:max-h-[900px]">
-            {libraryView === "collections" ? <>
-              {collections.filter(item => item.name.toLowerCase().includes(librarySearch.toLowerCase()) || savedRequests.some(request => (request.collectionId || DEFAULT_COLLECTION.id) === item.id && matchingRequest(request))).map(item => {
-                const requests = savedRequests.filter(request => (request.collectionId || DEFAULT_COLLECTION.id) === item.id && (item.name.toLowerCase().includes(librarySearch.toLowerCase()) || matchingRequest(request)));
-                return <div key={item.id} className="mb-1">
-                  <div className="flex items-center gap-0.5 px-1">
-                    <button type="button" aria-expanded={!collapsedCollections[item.id]} onClick={() => setCollapsedCollections(previous => ({ ...previous, [item.id]: !previous[item.id] }))} className="flex min-w-0 flex-1 items-center gap-1.5 rounded px-1 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-200/60">
-                      {collapsedCollections[item.id] ? <ChevronRight size={13} className="shrink-0" /> : <ChevronDown size={13} className="shrink-0" />}<Folder size={15} className="shrink-0 text-slate-500" /><span className="truncate">{item.name}</span><span className="text-[10px] font-normal text-slate-400">{requests.length}</span>
-                    </button>
-                    <IconButton label={"Add request to " + item.name} onClick={() => openRequest(undefined, false, item.id)}><Plus size={14} /></IconButton>
-                    <button type="button" aria-label={"Actions for " + item.name} title={"Actions for " + item.name} aria-haspopup="menu" aria-expanded={collectionMenu?.collection.id === item.id} onClick={event => {
-                      const bounds = event.currentTarget.getBoundingClientRect();
-                      collectionMenuTrigger.current = event.currentTarget;
-                      setCollectionMenu({ collection: item, left: Math.max(8, Math.min(bounds.right - 200, window.innerWidth - 208)), top: Math.max(8, Math.min(bounds.bottom + 4, window.innerHeight - 148)) });
-                    }} className="flex h-8 w-7 shrink-0 items-center justify-center rounded text-slate-500 hover:bg-slate-200"><MoreHorizontal size={17} /></button>
-                  </div>
-                  {!collapsedCollections[item.id] && <div className="ml-4 border-l border-slate-200">
-                    {requests.length === 0 && <p className="px-4 py-2 text-xs text-slate-400">No requests</p>}
-                    {requests.map(request => <div key={request.id} className={"group flex items-center pr-1 " + (activeSavedId === request.id ? "bg-[var(--brand-soft)]" : "hover:bg-slate-200/60")}>
-                      <button type="button" onClick={() => openRequest(request, true)} className="flex min-w-0 flex-1 items-center gap-2 px-3 py-2.5 text-left">
-                        <span className={"w-11 shrink-0 font-mono text-[10px] font-bold " + METHOD_COLORS[request.method].text}>{request.method}</span><span className="truncate text-xs text-slate-600">{request.name}</span>
-                      </button>
-                      <IconButton label={"Delete " + request.name} onClick={event => { removeSavedRequest(request.id, event); if (activeSavedId === request.id) setActiveSavedId(null); }}><Trash2 size={13} /></IconButton>
-                    </div>)}
-                  </div>}
-                </div>;
-              })}
-              {librarySearch && !collections.some(item => item.name.toLowerCase().includes(librarySearch.toLowerCase()) || savedRequests.some(request => (request.collectionId || DEFAULT_COLLECTION.id) === item.id && matchingRequest(request))) && <p className="px-3 py-5 text-xs text-slate-500">No matching collections or requests.</p>}
-            </> : <>
-              {historyGroups.length === 0 && <p className="px-3 py-5 text-xs text-slate-500">{librarySearch ? "No matching requests." : "No recent requests."}</p>}
-              {historyGroups.map(group => <div key={group.label}>
-                <h3 className="px-3 py-2 text-[11px] font-semibold text-slate-500">{group.label}</h3>
-                {group.requests.map(request => <div key={request.id} className="flex items-center hover:bg-slate-200/60">
-                  <button type="button" title={request.url} onClick={() => openRequest({ ...request, name: request.url.replace(/^https?:\/\//, "") })} className="min-w-0 flex-1 px-3 py-2.5 text-left">
-                    <div className="flex min-w-0 items-center gap-2"><span className={"w-11 shrink-0 font-mono text-[10px] font-bold " + METHOD_COLORS[request.method].text}>{request.method}</span><span className="truncate font-mono text-[11px] text-slate-600">{request.url.replace(/^https?:\/\//, "")}</span></div>
-                    <time dateTime={new Date(request.timestamp).toISOString()} className="mt-1 block pl-[52px] text-[10px] text-slate-400">{new Date(request.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</time>
-                  </button>
-                  <IconButton label={"Remove recent " + request.url} onClick={() => { const next = history.filter(item => item.id !== request.id); setHistory(next); persistRequests("msyn_api_client_history", next); }}><X size={13} /></IconButton>
-                </div>)}
-              </div>)}
-            </>}
+        <aside id="request-library" aria-label="Requests and collections" className={(sidebarOpen ? "flex" : "hidden lg:flex") + " w-full shrink-0 flex-col border-b border-slate-200 bg-slate-50 lg:w-72 lg:border-r lg:border-b-0"}>
+          <div className="flex items-center justify-between border-b border-slate-200 px-3 py-3"><h3 className="text-xs font-semibold text-slate-700">Requests</h3><div className="flex gap-1"><IconButton label="New collection" onClick={() => { setEditingCollection(null); setCollectionName(''); setCollectionModalOpen(true); }}><Folder size={15} /></IconButton><IconButton label="Clear request history" onClick={clearHistory} disabled={!history.length}><Trash2 size={15} /></IconButton></div></div>
+          <div className="px-2 py-2"><label className="flex items-center gap-2 rounded-md border border-slate-200 bg-white px-2 text-slate-400"><Search size={14} /><input type="search" aria-label="Search requests and collections" value={librarySearch} onChange={event => setLibrarySearch(event.target.value)} placeholder="Search" className="h-8 min-w-0 flex-1 bg-transparent text-xs text-slate-700 outline-none" /></label></div>
+          <div className="max-h-80 min-w-0 overflow-y-auto px-1 py-2 lg:max-h-[900px]">
+            {collections.filter(item => item.id !== DEFAULT_COLLECTION.id).map(item => {
+              const requests = savedRequests.filter(request => request.collectionId === item.id && (item.name.toLowerCase().includes(librarySearch.toLowerCase()) || matchingRequest(request))).sort((a, b) => (a.createdAt ?? a.timestamp) - (b.createdAt ?? b.timestamp));
+              if (librarySearch && !requests.length && !item.name.toLowerCase().includes(librarySearch.toLowerCase())) return null;
+              return <div key={item.id} data-collection-drop={item.id} onContextMenu={event => { event.preventDefault(); if ((event.target as HTMLElement).closest('[draggable]')) return; setRequestMenu(null); setCollectionMenu({ collection: item, left: Math.max(8, Math.min(event.clientX, window.innerWidth - 208)), top: Math.max(8, Math.min(event.clientY, window.innerHeight - 160)) }); }}
+                onDragOver={event => { if (event.dataTransfer.types.includes('application/x-msyn-request')) { event.preventDefault(); event.dataTransfer.dropEffect = 'move'; setDropTarget(item.id); } }}
+                onDragLeave={event => { if (!event.currentTarget.contains(event.relatedTarget as Node)) setDropTarget(null); }}
+                onDrop={event => { event.preventDefault(); event.stopPropagation(); try { const data = JSON.parse(event.dataTransfer.getData('application/x-msyn-request')); const request = (data.recent ? history : savedRequests).find(entry => entry.id === data.id); if (request) moveRequest(request, !!data.recent, item.id); } catch { setDropTarget(null); } }} className={'mb-1 rounded ' + (dropTarget === item.id ? 'bg-violet-100 ring-2 ring-violet-400' : '')}>
+                <div className="flex items-center px-1"><button type="button" aria-expanded={!collapsedCollections[item.id]} onClick={() => setCollapsedCollections(previous => ({ ...previous, [item.id]: !previous[item.id] }))} className="flex min-w-0 flex-1 items-center gap-1.5 px-1 py-2 text-left text-xs font-semibold text-slate-700">{collapsedCollections[item.id] ? <ChevronRight size={13} /> : <ChevronDown size={13} />}<Folder size={15} /><span className="truncate">{item.name}</span><span className="text-slate-400">{requests.length}</span></button><IconButton label={'Add request to ' + item.name} onClick={() => openRequest(undefined, false, item.id)}><Plus size={14} /></IconButton><button type="button" aria-label={'Actions for ' + item.name} aria-haspopup="menu" onClick={event => { const bounds = event.currentTarget.getBoundingClientRect(); collectionMenuTrigger.current = event.currentTarget; setRequestMenu(null); setCollectionMenu({ collection: item, left: Math.max(8, Math.min(bounds.left, window.innerWidth - 208)), top: Math.max(8, Math.min(bounds.bottom, window.innerHeight - 160)) }); }} className="rounded p-2 text-slate-500"><MoreHorizontal size={15} /></button></div>
+                {!collapsedCollections[item.id] && <div className="ml-4 border-l border-slate-200">{requests.map(request => <LibraryRequestRow key={request.id} request={request} recent={false} onRename={name => renameRequest(request, false, name)} active={activeSavedId === request.id} onOpen={() => openRequest(request, true)} onMenu={(x, y) => showRequestMenu(request, false, x, y)} onMove={destination => moveRequest(request, false, destination)} onDropTarget={id => { setDropTarget(id); setRequestMenu(null); }} />)}{!requests.length && <p className="px-3 py-2 text-xs text-slate-400">No requests</p>}</div>}
+              </div>;
+            })}
+            <div data-collection-drop={DEFAULT_COLLECTION.id} onDragOver={event => { if (event.dataTransfer.types.includes('application/x-msyn-request')) { event.preventDefault(); setDropTarget(DEFAULT_COLLECTION.id); } }} onDrop={event => { event.preventDefault(); try { const data = JSON.parse(event.dataTransfer.getData('application/x-msyn-request')); const request = (data.recent ? history : savedRequests).find(entry => entry.id === data.id); if (request) moveRequest(request, !!data.recent, DEFAULT_COLLECTION.id); } catch { setDropTarget(null); } }} className={'min-h-16 rounded ' + (dropTarget === DEFAULT_COLLECTION.id ? 'bg-violet-100 ring-2 ring-violet-400' : '')}>
+              {normalRequests.map(request => <LibraryRequestRow key={request.id} request={request} recent={!savedRequests.some(item => item.id === request.id)} onRename={name => renameRequest(request, !savedRequests.some(item => item.id === request.id), name)} active={activeSavedId === request.id} onOpen={() => openRequest(request, savedRequests.some(item => item.id === request.id))} onMenu={(x, y) => showRequestMenu(request, !savedRequests.some(item => item.id === request.id), x, y)} onMove={destination => moveRequest(request, !savedRequests.some(item => item.id === request.id), destination)} onDropTarget={id => { setDropTarget(id); setRequestMenu(null); }} />)}
+              {!normalRequests.length && <p className="px-3 py-4 text-xs text-slate-400">{librarySearch ? 'No matching requests' : 'No unfiled requests'}</p>}
+            </div>
           </div>
           <p className="mt-auto border-t border-slate-200 px-3 py-3 text-[10px] text-slate-400">Saved on this browser</p>
         </aside>
 
         <section className="min-w-0 flex-1" aria-label="API request workbench">
           <div className="flex items-stretch border-b border-slate-200 bg-slate-50">
-            <div role="tablist" aria-label="Open requests" className="flex min-w-0 flex-1 overflow-x-auto" onKeyDown={event => {
+            <div onContextMenu={event => { event.preventDefault(); setRequestMenu(null); setCollectionMenu(null); setTabMenu({ id: activeTabId, left: Math.max(8, Math.min(event.clientX, window.innerWidth - 228)), top: Math.max(8, Math.min(event.clientY, window.innerHeight - 280)) }); }} role="tablist" aria-label="Open requests" className="flex min-w-0 flex-1 overflow-x-auto" onKeyDown={event => {
               const index = openTabs.findIndex(tab => tab.id === activeTabId);
               const next = event.key === "ArrowRight" ? (index + 1) % openTabs.length : event.key === "ArrowLeft" ? (index + openTabs.length - 1) % openTabs.length : event.key === "Home" ? 0 : event.key === "End" ? openTabs.length - 1 : -1;
               if (next >= 0) { event.preventDefault(); selectRequestTab(openTabs[next].id); event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]')[next]?.focus(); }
             }}>
-              {openTabs.map(tab => <div key={tab.id} className={"flex max-w-64 min-w-36 shrink-0 items-center border-r border-slate-200 border-t-2 " + (tab.id === activeTabId ? "border-t-[var(--brand)] bg-white" : "border-t-transparent")}>
+              {openTabs.map(tab => <div onContextMenu={event => { event.preventDefault(); event.stopPropagation(); setRequestMenu(null); setCollectionMenu(null); setTabMenu({ id: tab.id, left: Math.max(8, Math.min(event.clientX, window.innerWidth - 228)), top: Math.max(8, Math.min(event.clientY, window.innerHeight - 280)) }); }} key={tab.id} className={"flex max-w-64 min-w-36 shrink-0 items-center border-r border-slate-200 border-t-2 " + (tab.id === activeTabId ? "border-t-[var(--brand)] bg-white" : "border-t-transparent")}>
                 <button type="button" role="tab" id={"open-request-" + tab.id} tabIndex={tab.id === activeTabId ? 0 : -1} aria-selected={tab.id === activeTabId} aria-controls="active-request-workbench" onClick={() => selectRequestTab(tab.id)} className="flex min-w-0 flex-1 items-center gap-2 px-3 py-3 text-xs text-slate-600">
                   <span className={"shrink-0 font-mono text-[10px] font-semibold " + METHOD_COLORS[tab.id === activeTabId ? method : tab.request?.method || "GET"].text}>{tab.id === activeTabId ? method : tab.request?.method || "GET"}</span>
                   <span className="truncate">{tab.id === activeTabId ? draftName : tab.name}</span>
@@ -604,7 +650,7 @@ export function ApiClientTool() {
           </div>
           <div id="active-request-workbench" role="tabpanel" aria-labelledby={"open-request-" + activeTabId}>
             <div className="flex flex-wrap items-center justify-between gap-2 px-4 pt-4">
-              <div className="min-w-0 break-words text-xs text-slate-500"><span>{collections.find(item => item.id === collectionId)?.name || "My collection"}</span><span className="mx-2">/</span><span className="font-semibold text-slate-800">{draftName}</span></div>
+              <div className="min-w-0 break-words text-xs text-slate-500"><span>{collections.find(item => item.id === collectionId)?.id === DEFAULT_COLLECTION.id ? "Unfiled requests" : collections.find(item => item.id === collectionId)?.name || "Unfiled requests"}</span><span className="mx-2">/</span><input aria-label="Request name" value={draftName} onChange={event => setDraftName(event.target.value)} onBlur={commitDraftName} onKeyDown={event => { if (event.key === "Enter") { event.preventDefault(); event.currentTarget.blur(); } }} placeholder="Request name" className="min-w-24 max-w-64 rounded border border-transparent bg-transparent px-1 py-1 font-semibold text-slate-800 hover:border-slate-300 focus:border-violet-500 focus:outline-none" /></div>
               <div className="flex min-w-0 items-center gap-2">
                 <label className="sr-only" htmlFor="api-example">Example request</label>
                 <select id="api-example" defaultValue="" onChange={event => {
@@ -627,29 +673,20 @@ export function ApiClientTool() {
         {loading ? <button key="cancel" type="button" onClick={cancelRequest} className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-red-300 px-4 text-sm font-semibold text-red-700 hover:bg-red-50"><X size={16} /> Cancel</button>
           : <button key="send" type="submit" disabled={!url.trim()} className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-[var(--brand)] px-5 text-sm font-semibold text-white hover:bg-violet-800 disabled:opacity-50"><Send size={16} /> Send request</button>}
       </form>
-      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-slate-200 px-4 pb-4">
-        <label className="inline-flex cursor-pointer items-center gap-2 text-xs font-medium text-slate-700">
-          <input type="checkbox" checked={useProxy} onChange={event => setUseProxy(event.target.checked)} className="h-4 w-4 accent-[var(--brand)]" /> Use MSYN proxy
-        </label>
-        <details className="max-w-xl text-xs leading-5 text-slate-500">
-          <summary className="cursor-pointer">Connection &amp; storage details</summary>
-          <p className="mt-2">Proxy requests pass through MSYN to public endpoints on ports 80 or 443. Direct requests are subject to browser CORS and local-network permissions. Timeout: 30 seconds. Response limit: 2 MB. Saved requests and history stay in this browser; bodies are retained, while authentication and custom header values are cleared.</p>
-        </details>
-      </div>
       {libraryError && <p role="alert" className="border-b border-red-200 bg-red-50 p-3 text-xs text-red-800">{libraryError}</p>}
       {storageNotice && <p role="status" className="border-b border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">{storageNotice}</p>}
 
       <div className="min-w-0">
         <section aria-label="Request editor" className="min-w-0 border-b border-slate-200">
-          <ClientTabs label="Request settings" value={activeReqTab} onChange={value => setActiveReqTab(value as typeof activeReqTab)} items={[
+          <ClientTabs label="Request settings" value={visibleReqTab} onChange={value => { setActiveReqTab(value as typeof activeReqTab); if (value === "body" && bodyType === "none") setBodyType("json"); }} items={[
             { id: "params", label: "Parameters", count: params.filter(row => row.enabled && row.key).length },
             { id: "headers", label: "Headers", count: headers.filter(row => row.enabled && row.key).length },
-            { id: "auth", label: "Authorization" }, { id: "body", label: "Body" }, { id: "code", label: "Code" },
+            { id: "auth", label: "Authorization" }, ...(supportsBody ? [{ id: "body", label: "Body" }] : []), { id: "code", label: "Code" },
           ]} />
-          <div role="tabpanel" id={"request-settings-" + activeReqTab} aria-labelledby={"request-settings-tab-" + activeReqTab} className="min-h-52 p-4 sm:p-5">
-            {activeReqTab === "params" && <RequestRows label="Parameter" rows={params} onChange={setParamsAndUrl} />}
-            {activeReqTab === "headers" && <RequestRows label="Header" rows={headers} onChange={setHeaders} />}
-            {activeReqTab === "auth" && <div className="space-y-4">
+          <div role="tabpanel" id={"request-settings-" + visibleReqTab} aria-labelledby={"request-settings-tab-" + visibleReqTab} className="min-h-52 p-4 sm:p-5">
+            {visibleReqTab === "params" && <RequestRows label="Parameter" rows={params} onChange={setParamsAndUrl} />}
+            {visibleReqTab === "headers" && <RequestRows label="Header" rows={headers} onChange={setHeaders} />}
+            {visibleReqTab === "auth" && <div className="space-y-4">
               <label className="block text-xs font-medium text-slate-700">Authorization type
                 <select value={authType} onChange={event => setAuthType(event.target.value as typeof authType)} className={fieldClass + " mt-2"}>
                   <option value="none">No authorization</option><option value="bearer">Bearer token</option><option value="basic">Basic authentication</option><option value="apikey">API key</option>
@@ -667,9 +704,8 @@ export function ApiClientTool() {
                 <label className="block text-xs font-medium text-slate-700">Add key to<select value={apiKeyPlacement} onChange={event => setApiKeyPlacement(event.target.value as typeof apiKeyPlacement)} className={fieldClass + " mt-2"}><option value="header">Header</option><option value="query">Query parameters</option></select></label>
               </div>}
             </div>}
-            {activeReqTab === "body" && <div className="space-y-4">
-              <label className="block text-xs font-medium text-slate-700">Body format<select value={bodyType} onChange={event => { setBodyType(event.target.value as typeof bodyType); setJsonError(null); }} className={fieldClass + " mt-2"}><option value="none">No body</option><option value="json">JSON</option><option value="urlencoded">URL-encoded form</option><option value="raw">Plain text</option></select></label>
-              {["GET", "HEAD"].includes(method) && bodyType !== "none" && <p className="text-xs text-amber-800">{method} requests do not send a body. Choose POST, PUT, PATCH or DELETE to include it.</p>}
+            {visibleReqTab === "body" && <div className="space-y-4">
+              <div className="flex justify-end"><label className="sr-only" htmlFor="request-body-format">Body format</label><select id="request-body-format" value={bodyType} onChange={event => { setBodyType(event.target.value as typeof bodyType); setJsonError(null); }} className="rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-700"><option value="json">JSON</option><option value="urlencoded">Form</option><option value="raw">Text</option><option value="none">No body</option></select></div>
               {bodyType === "json" && <div>
                 <div className="mb-2 flex items-center justify-between"><label htmlFor="json-body" className="text-xs font-medium text-slate-700">JSON body</label><IconButton label="Format JSON" onClick={formatJson}><Braces size={16} /></IconButton></div>
                 <textarea id="json-body" spellCheck={false} value={bodyJson} onChange={event => { setBodyJson(event.target.value); setJsonError(null); }} aria-invalid={!!jsonError} aria-describedby={jsonError ? "json-body-error" : undefined} rows={12} className={fieldClass + " resize-y font-mono leading-6"} />
@@ -678,7 +714,7 @@ export function ApiClientTool() {
               {bodyType === "raw" && <label className="block text-xs font-medium text-slate-700">Plain text body<textarea spellCheck={false} value={bodyRaw} onChange={event => setBodyRaw(event.target.value)} rows={12} placeholder="Enter request body" className={fieldClass + " mt-2 resize-y font-mono leading-6"} /></label>}
               {bodyType === "urlencoded" && <RequestRows label="Form field" rows={bodyFormData} onChange={setBodyFormData} />}
             </div>}
-            {activeReqTab === "code" && <div className="space-y-4">
+            {visibleReqTab === "code" && <div className="space-y-4">
               <div className="flex items-end justify-between gap-3"><label className="min-w-0 flex-1 text-xs font-medium text-slate-700">Language<select value={codeLang} onChange={event => setCodeLang(event.target.value as typeof codeLang)} className={fieldClass + " mt-2"}><option value="curl">cURL</option><option value="js">JavaScript / Fetch</option><option value="node">Node.js / Axios</option><option value="python">Python / requests</option><option value="php">PHP / cURL</option><option value="go">Go</option></select></label>
                 <IconButton label={codeCopied ? "Snippet copied" : "Copy code snippet"} onClick={async () => { if (await copyText(generatedCode)) { setCodeCopied(true); setTimeout(() => setCodeCopied(false), 2000); } }}>{codeCopied ? <Check size={16} /> : <Copy size={16} />}</IconButton>
               </div>
@@ -704,7 +740,6 @@ export function ApiClientTool() {
               </div>
               {response.isError ? <div role="alert" className="m-4 space-y-3 rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-800">
                 <div className="flex items-start gap-2"><AlertCircle size={18} className="mt-0.5 shrink-0" /><p className="min-w-0 break-words">{response.data}</p></div>
-                <p className="text-xs leading-5">{useProxy ? "Check the endpoint and try again. For a local API, turn off the MSYN proxy and allow direct browser access." : "Check the endpoint's CORS settings and browser permissions. For a public API, try the MSYN proxy."}</p>
               </div> : <>
                 <ClientTabs label="Response format" value={activeRespTab} onChange={value => setActiveRespTab(value as typeof activeRespTab)} items={[{ id: "pretty", label: "Formatted" }, { id: "raw", label: "Raw" }, { id: "headers", label: "Headers", count: Object.keys(response.headers).length }, { id: "preview", label: "Preview" }]} />
                 <div role="tabpanel" id={"response-format-" + activeRespTab} aria-labelledby={"response-format-tab-" + activeRespTab} className="min-h-72 p-4">
@@ -732,11 +767,27 @@ export function ApiClientTool() {
         <form onSubmit={event => { event.preventDefault(); const destination = new FormData(event.currentTarget).get("collection"); handleSaveCollection(typeof destination === "string" ? destination : collectionId); }}>
           <div className="flex items-center justify-between gap-3"><h2 id="save-request-title" className="text-lg font-semibold">Save request</h2><IconButton label="Close save dialog" onClick={() => setSaveModalOpen(false)}><X size={18} /></IconButton></div>
           <label className="mt-5 block text-sm font-medium">Request name<input autoFocus required maxLength={100} value={saveName} onChange={event => setSaveName(event.target.value)} placeholder="e.g. Inventory / list products" className={fieldClass + " mt-2"} /></label>
-          <label className="mt-4 block text-sm font-medium">Collection<select name="collection" aria-label="Save to collection" defaultValue={collectionId} className={fieldClass + " mt-2"}>{collections.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
+          <label className="mt-4 block text-sm font-medium">Save to<select name="collection" aria-label="Save to collection" defaultValue={collectionId} className={fieldClass + " mt-2"}>{collections.map(item => <option key={item.id} value={item.id}>{item.id === DEFAULT_COLLECTION.id ? "Unfiled requests" : item.name}</option>)}</select></label>
           <p className="mt-3 text-xs leading-5 text-slate-500">Saved in this browser. Authentication and custom header values are removed; request bodies are retained.</p>
           <div className="mt-6 flex justify-end gap-2"><button type="button" onClick={() => setSaveModalOpen(false)} className="rounded-md border border-slate-300 px-4 py-2 text-sm">Cancel</button><button type="submit" disabled={!saveName.trim()} className="rounded-md bg-[var(--brand)] px-4 py-2 text-sm font-semibold text-white hover:bg-violet-800 disabled:opacity-50">Save request</button></div>
         </form>
       </dialog>
+      {tabMenu && createPortal(<div ref={tabMenuRef} role="menu" aria-label="Tab actions" style={{ left: tabMenu.left, top: tabMenu.top }} className="fixed z-50 w-56 rounded-lg border border-slate-200 bg-white p-1 shadow-xl">
+        <button role="menuitem" type="button" onClick={() => { setTabMenu(null); openRequest(); }} className="block w-full rounded px-3 py-2 text-left text-xs hover:bg-slate-100">New request</button>
+        <button role="menuitem" type="button" onClick={() => { closeRequestTab(tabMenu.id); setTabMenu(null); }} className="block w-full rounded px-3 py-2 text-left text-xs hover:bg-slate-100">Close tab</button>
+        <button role="menuitem" type="button" disabled={openTabs.length < 2} onClick={() => closeRequestTabs(tabMenu.id, 'others')} className="block w-full rounded px-3 py-2 text-left text-xs hover:bg-slate-100 disabled:text-slate-300">Close other tabs</button>
+        <button role="menuitem" type="button" disabled={openTabs.findIndex(tab => tab.id === tabMenu.id) === 0} onClick={() => closeRequestTabs(tabMenu.id, 'left')} className="block w-full rounded px-3 py-2 text-left text-xs hover:bg-slate-100 disabled:text-slate-300">Close tabs to the left</button>
+        <button role="menuitem" type="button" disabled={openTabs.findIndex(tab => tab.id === tabMenu.id) === openTabs.length - 1} onClick={() => closeRequestTabs(tabMenu.id, 'right')} className="block w-full rounded px-3 py-2 text-left text-xs hover:bg-slate-100 disabled:text-slate-300">Close tabs to the right</button>
+        <button role="menuitem" type="button" onClick={() => closeRequestTabs(tabMenu.id, 'all')} className="block w-full rounded border-t border-slate-100 px-3 py-2 text-left text-xs hover:bg-slate-100">Close all tabs</button>
+      </div>, document.body)}
+      {requestMenu && createPortal(<div ref={requestMenuRef} role="menu" aria-label="Request actions" style={{ left: requestMenu.left, top: requestMenu.top, maxHeight: 'min(380px, 80vh)' }} className="fixed z-50 w-60 overflow-y-auto rounded-lg border border-slate-200 bg-white p-1 shadow-xl">
+        <button type="button" role="menuitem" onClick={() => { openRequest(requestMenu.request, !requestMenu.recent); setRequestMenu(null); }} className="block w-full rounded px-3 py-2 text-left text-xs hover:bg-slate-100">Open request</button>
+        <button type="button" role="menuitem" onClick={() => { const copy = sanitizeApiRequest({ ...requestMenu.request, id: crypto.randomUUID(), name: (requestMenu.request.name || 'Request') + ' copy', collectionId: requestMenu.recent ? DEFAULT_COLLECTION.id : requestMenu.request.collectionId, createdAt: Date.now(), timestamp: Date.now() }); const next = [...savedRequests, copy]; setSavedRequests(next); persistRequests('msyn_api_client_saved', next); setRequestMenu(null); }} className="block w-full rounded px-3 py-2 text-left text-xs hover:bg-slate-100">Duplicate request</button>
+        <button type="button" role="menuitem" onClick={() => { openRequest(requestMenu.request, !requestMenu.recent); setSaveName(requestMenu.request.name); setSaveModalOpen(true); setRequestMenu(null); }} className="block w-full rounded px-3 py-2 text-left text-xs hover:bg-slate-100">Rename request</button>
+        <p className="border-t border-slate-100 px-3 pt-2 text-[10px] text-slate-400">Move to</p>
+        {collections.filter(item => requestMenu.recent || item.id !== (requestMenu.request.collectionId || DEFAULT_COLLECTION.id)).map(item => <button type="button" role="menuitem" key={item.id} onClick={() => moveRequest(requestMenu.request, requestMenu.recent, item.id)} className="flex w-full items-center gap-2 rounded px-3 py-2 text-left text-xs hover:bg-slate-100"><Folder size={13} />{item.id === DEFAULT_COLLECTION.id ? 'Unfiled requests' : item.name}</button>)}
+        <button type="button" role="menuitem" onClick={() => deleteRequest(requestMenu.request, requestMenu.recent)} className="block w-full rounded border-t border-slate-100 px-3 py-2 text-left text-xs text-red-700 hover:bg-red-50">Delete request</button>
+      </div>, document.body)}
       {collectionMenu && createPortal(
         <div ref={collectionMenuRef} role="menu" aria-label={"Collection actions for " + collectionMenu.collection.name} style={{ left: collectionMenu.left, top: collectionMenu.top }} className="fixed z-[70] w-[200px] rounded-md border border-slate-200 bg-white p-1 shadow-lg" onKeyDown={event => {
           const buttons = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="menuitem"]'));
@@ -749,6 +800,26 @@ export function ApiClientTool() {
         </div>, document.body)}
     </div>
   );
+}
+
+function LibraryRequestRow({ request, recent, active, onOpen, onMenu, onMove, onDropTarget, onRename }: { request: SavedRequest; recent: boolean; active: boolean; onRename: (name: string) => void; onOpen: () => void; onMenu: (x: number, y: number) => void; onMove: (destination: string) => void; onDropTarget: (id: string | null) => void }) {
+  const rightDrag = useRef<{ x: number; y: number; moved: boolean } | null>(null);
+  const suppressContext = useRef(false);
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState("");
+  const finishName = () => { if (name.trim()) onRename(name); setEditing(false); };
+  return <div key={(recent ? 'recent-' : '') + request.id}
+    draggable={!editing} onDragStart={event => { event.dataTransfer.setData('application/x-msyn-request', JSON.stringify({ id: request.id, recent })); event.dataTransfer.effectAllowed = 'move'; }} onDragEnd={() => onDropTarget(null)}
+    onContextMenu={event => { event.preventDefault(); if (suppressContext.current) { suppressContext.current = false; return; } onMenu(event.clientX, event.clientY); }}
+    onPointerDown={event => { if (event.button !== 2) return; suppressContext.current = false; rightDrag.current = { x: event.clientX, y: event.clientY, moved: false }; event.currentTarget.setPointerCapture(event.pointerId); }}
+    onPointerMove={event => { const drag = rightDrag.current; if (!drag || !(event.buttons & 2)) return; if (Math.hypot(event.clientX - drag.x, event.clientY - drag.y) > 6) drag.moved = true; if (drag.moved) {  onDropTarget(document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>('[data-collection-drop]')?.dataset.collectionDrop || null); } }}
+    onPointerUp={event => { const drag = rightDrag.current; rightDrag.current = null; if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId); if (drag?.moved) { suppressContext.current = true; const target = document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>('[data-collection-drop]')?.dataset.collectionDrop; if (target) onMove(target); } onDropTarget(null); }}
+    onPointerCancel={() => { rightDrag.current = null; onDropTarget(null); }}
+    className={'flex items-center rounded ' + (active ? 'bg-[var(--brand-soft)]' : 'hover:bg-slate-200/60')}>
+    {editing ? <input autoFocus aria-label="Edit request name" value={name} onChange={event => setName(event.target.value)} onBlur={finishName} onKeyDown={event => { if (event.key === "Enter") { event.preventDefault(); event.currentTarget.blur(); } if (event.key === "Escape") { event.preventDefault(); setEditing(false); } }} className="m-1 w-0 min-w-0 flex-1 rounded border border-violet-400 bg-white px-2 py-1.5 text-xs outline-none" /> : <button type="button" title={request.url} onClick={() => onOpen()} className="flex min-w-0 flex-1 items-center gap-2 px-3 py-2.5 text-left"><span className={'w-11 shrink-0 font-mono text-[10px] font-bold ' + METHOD_COLORS[request.method].text}>{request.method}</span><span className="truncate text-xs text-slate-600">{request.name || request.url}</span></button>}
+    {!editing && <button type="button" aria-label={"Rename " + (request.name || request.url)} onClick={() => { setName(request.name || ""); setEditing(true); }} className="shrink-0 rounded p-1 text-slate-400 hover:bg-slate-200 hover:text-slate-700"><Pencil size={12} /></button>}
+    <button type="button" aria-label={'Actions for request ' + (request.name || request.url)} aria-haspopup="menu" onClick={event => { const bounds = event.currentTarget.getBoundingClientRect(); onMenu(bounds.left, bounds.bottom); }} className="shrink-0 rounded p-2 text-slate-500 hover:bg-slate-200"><MoreHorizontal size={15} /></button>
+  </div>;
 }
 
 const fieldClass = "w-full min-w-0 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:border-[var(--brand)] focus:ring-1 focus:ring-[var(--brand)]";

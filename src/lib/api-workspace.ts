@@ -89,3 +89,28 @@ export function groupApiHistory<T extends { timestamp: number }>(items: T[], now
   }
   return [...groups].map(([label, requests]) => ({ label, requests }));
 }
+
+// Compare the stored request configuration, excluding names, row IDs and send times.
+export function apiHistoryKey<T extends ApiRequestConfig & { params: ApiRow[] }>(request: T) {
+  const safe = sanitizeApiRequest(request);
+  const rows = (items: ApiRow[]) => (items || []).filter(row => row.enabled && row.key.trim()).map(row => [row.key.trim(), row.value]);
+  let wire;
+  try { wire = compileApiRequest(safe); }
+  catch { wire = { method: safe.method, url: safe.url, headers: rows(safe.headers), bodyType: safe.bodyType, bodyJson: safe.bodyJson, bodyRaw: safe.bodyRaw, bodyFormData: rows(safe.bodyFormData) }; }
+  return JSON.stringify([wire, safe.authType, safe.authType === 'apikey' ? [safe.apiKeyName, safe.apiKeyPlacement] : null]);
+}
+
+export function deduplicateApiHistory<T extends ApiRequestConfig & { params: ApiRow[]; timestamp: number }>(items: T[]): T[] {
+  const seen = new Set<string>();
+  return [...items].sort((a, b) => b.timestamp - a.timestamp).filter(item => {
+    const key = apiHistoryKey(item);
+    if (seen.has(key)) return false;
+    seen.add(key); return true;
+  }).slice(0, 25);
+}
+
+export function recordApiHistory<T extends ApiRequestConfig & { params: ApiRow[]; timestamp: number; id: string; createdAt?: number }>(items: T[], request: T): T[] {
+  const key = apiHistoryKey(request);
+  const existing = items.find(item => apiHistoryKey(item) === key);
+  return deduplicateApiHistory([{ ...request, id: existing?.id || request.id, createdAt: existing?.createdAt ?? existing?.timestamp ?? request.timestamp }, ...items.filter(item => apiHistoryKey(item) !== key)]);
+}

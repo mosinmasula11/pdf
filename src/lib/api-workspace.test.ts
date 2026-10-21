@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_COLLECTION, exportApiCollection, groupApiHistory, importApiCollection, normalizeCollections } from "./api-workspace";
+import { DEFAULT_COLLECTION, apiHistoryKey, deduplicateApiHistory, recordApiHistory, exportApiCollection, groupApiHistory, importApiCollection, normalizeCollections } from "./api-workspace";
 import type { ApiRequestConfig } from "./api-request";
 
 const request: ApiRequestConfig & { name: string; params: [] } = {
@@ -74,4 +74,32 @@ it("groups recent history by day and ignores invalid timestamps", () => {
   expect(groups.map(group => group.label).slice(0, 2)).toEqual(["Today", "Yesterday"]);
   expect(groups).toHaveLength(3);
   expect(groups.reduce((sum, group) => sum + group.requests.length, 0)).toBe(3);
+});
+
+describe('request list deduplication', () => {
+  const first = { ...request, id: 'first', timestamp: 1 };
+  it('refreshes the same entry on repeated sends and retains its ID', () => {
+    const result = recordApiHistory([first], { ...first, id: 'new', timestamp: 2, name: 'Another name', headers: first.headers.map(row => ({ ...row, id: 'changed-row-id' })) });
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({ id: 'first', timestamp: 2 });
+  });
+  it('retains changes to URL, parameters, method, headers and body', () => {
+    for (const changes of [{ url: 'https://example.com/other' }, { url: 'https://example.com/items?page=2' }, { method: 'PUT' }, { headers: [{ id: 'h', key: 'Accept', value: 'text/plain', enabled: true }] }, { bodyJson: '{"name":"Different"}' }]) {
+      expect(recordApiHistory([first], { ...first, ...changes, id: 'second', timestamp: 2 })).toHaveLength(2);
+    }
+  });
+  it('removes previously stored duplicates, keeping the most recent entry', () => {
+    expect(deduplicateApiHistory([first, { ...first, id: 'second', timestamp: 2 }])).toMatchObject([{ id: 'second' }]);
+  });
+  it('compares saved and recent requests without names or credentials', () => {
+    expect(apiHistoryKey(first)).toBe(apiHistoryKey({ ...first, name: 'Saved name', bearerToken: 'other-secret' }));
+  });
+});
+
+it('keeps original list position when an existing request is sent again', () => {
+  const original = { ...request, id: 'original', timestamp: 10 };
+  const newer = { ...request, id: 'newer', url: 'https://example.com/new', timestamp: 20 };
+  const result = recordApiHistory([original, newer], { ...original, id: 'repeat', timestamp: 30 });
+  const ordered = result.sort((a, b) => ((a as typeof a & { createdAt?: number }).createdAt ?? a.timestamp) - ((b as typeof b & { createdAt?: number }).createdAt ?? b.timestamp));
+  expect(ordered.map(item => item.id)).toEqual(['original', 'newer']);
 });
