@@ -26,6 +26,7 @@ const highPriorityToolPaths = new Set([
   "/qr-code-generator",
   "/password-generator",
   "/api-client",
+  "/latex-editor",
   "/api-key-generator",
   "/jwt-debugger",
   "/epoch-converter",

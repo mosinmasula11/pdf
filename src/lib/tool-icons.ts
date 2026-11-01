@@ -130,6 +130,7 @@ export const toolIcons: Record<string, LucideIcon> = {
   "base64-converter": Binary,
   "password-generator": KeyRound,
   "api-client": Send,
+  "latex-editor": FileCode,
   "api-key-generator": Key,
   "jwt-debugger": ShieldCheck,
   "epoch-converter": Clock,

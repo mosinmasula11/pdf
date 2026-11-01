@@ -25,6 +25,7 @@ export type ToolDefinition = {
 };
 
 export const toolRegistry: ToolDefinition[] = [
+  { id: "latex-editor", name: "LaTeX Editor", description: "Write LaTeX with project files, real PDF compilation, templates, and a live preview.", category: "Utilities", subcategory: "Utilities", path: "/latex-editor", supportedFormats: ["LaTeX", "PDF", "ZIP"], seoTitle: "LaTeX Editor Online | Write, Compile & Preview PDF", metaDescription: "Create LaTeX projects online with a source editor, file manager, real pdfLaTeX compilation, PDF preview, and source ZIP downloads.", status: "working" },
   // --- Organize PDF ---
   {
     id: "merge-pdf",

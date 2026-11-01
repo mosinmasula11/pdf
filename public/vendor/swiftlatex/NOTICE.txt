@@ -1,0 +1,10 @@
+SwiftLaTeX pdfTeX WebAssembly engine
+Copyright SwiftLab and contributors, 2018–2022.
+Unmodified binaries from release v20022022:
+https://github.com/SwiftLaTeX/SwiftLaTeX/releases/tag/v20022022
+Corresponding source and build scripts:
+https://github.com/SwiftLaTeX/SwiftLaTeX/archive/refs/tags/v20022022.zip
+License: GNU Affero General Public License v3; see LICENSE in this folder.
+Additional engine and component notices are retained in the source release.
+Distributed as a separate worker communicating through messages. No warranty.
+TeX packages are fetched from https://texlive.texlyre.org/ (TeXlyre mirror); their individual licenses apply.

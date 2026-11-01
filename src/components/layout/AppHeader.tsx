@@ -57,7 +57,7 @@ const toolMenus = [
     label: "All utility tools",
     href: "/utility-tools",
     groups: [
-      { title: "Developer tools", toolIds: ["json-to-types", "jwt-debugger", "api-client", "epoch-converter", "url-converter", "json-formatter", "api-key-generator"] },
+      { title: "Developer tools", toolIds: ["latex-editor", "json-to-types", "jwt-debugger", "api-client", "epoch-converter", "url-converter", "json-formatter", "api-key-generator"] },
       { title: "Finance & Tax Calculators", toolIds: ["in-hand-salary-calculator", "income-tax-calculator", "gst-calculator", "sip-calculator", "lumpsum-calculator", "compound-interest-calculator", "fd-calculator", "emi-calculator"] },
       { title: "Math, Health & Utilities", toolIds: ["number-to-words", "percentage-calculator", "date-calculator", "bmi-calculator", "unit-converter", "age-calculator", "password-generator", "qr-code-generator", "word-counter"] },
     ],
